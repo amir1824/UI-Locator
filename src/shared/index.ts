@@ -14,8 +14,6 @@ export type SourceLocation = {
   col: string
 }
 
-export type ClickTarget = 'tsx' | 'css'
-
 export const SOURCE_ATTR = 'data-source'
 export const OPEN_ENDPOINT = '/__open-in-editor'
 export const DEFAULT_IDE: LocatorIde = 'auto'
@@ -42,14 +40,4 @@ export function parseSourceLocation(raw: string): SourceLocation {
 
 export function formatSourceLocation(loc: SourceLocation): string {
   return `${loc.file}:${loc.line}:${loc.col}`
-}
-
-const CLICK_TARGET_TRANSITION: Record<ClickTarget, ClickTarget> = {
-  tsx: 'css',
-  css: 'tsx',
-}
-
-export function nextClickTarget(current: ClickTarget, hasCss: boolean): ClickTarget {
-  if (!hasCss) return 'tsx'
-  return CLICK_TARGET_TRANSITION[current]
 }

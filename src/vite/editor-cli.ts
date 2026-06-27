@@ -31,18 +31,18 @@ function buildCliCandidates(): Record<string, string[]> {
 
 const CLI_CANDIDATES = buildCliCandidates()
 
+const isPathLike = (value: string): boolean => value.includes('/') || value.includes('\\')
+
 export function toLaunchEditorName(ide: Exclude<LocatorIde, 'auto'>): string {
   return IDE_LAUNCH_NAMES[ide]
 }
 
 export function resolveCliPath(command: string): string {
-  if ((command.includes('/') || command.includes('\\')) && existsSync(command)) {
+  if (isPathLike(command) && existsSync(command)) {
     return command
   }
   const candidates = CLI_CANDIDATES[command] ?? [command]
-  const bundlePath = candidates.find(
-    (path) => (path.includes('/') || path.includes('\\')) && existsSync(path),
-  )
+  const bundlePath = candidates.find((path) => isPathLike(path) && existsSync(path))
   if (bundlePath) return bundlePath
   return command
 }

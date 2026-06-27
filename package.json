@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-source-locator",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Dev-only Vite plugin: click UI elements to jump to source in your IDE",
   "license": "MIT",
   "type": "module",

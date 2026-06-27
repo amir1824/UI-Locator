@@ -1,7 +1,9 @@
 import type { LocatorTheme } from '../shared/index.js'
 import { LAYOUT, UI_IDS } from './overlay-styles.js'
-import { badgeLabel } from './preference.js'
 import { buildTooltipText } from './tooltip-text.js'
+
+const BADGE_LABEL_IDLE = 'Locator'
+const BADGE_LABEL_PICKING = 'Picking — Esc'
 
 const HIGHLIGHT_PADDING = 2
 const TOOLTIP_CURSOR_OFFSET = 16
@@ -62,12 +64,11 @@ export function createLocatorOverlayUi(
 
   const showSourceTooltip = (
     el: Element,
-    tsxSource: string | undefined,
-    cssSource: string | undefined,
+    source: string | undefined,
     x: number,
     y: number,
   ) => {
-    showTooltip(buildTooltipText(tsxSource, cssSource), el, x, y)
+    showTooltip(buildTooltipText(source), el, x, y)
   }
 
   const flashMessage = (text: string) => {
@@ -88,26 +89,29 @@ export function createLocatorOverlayUi(
   const setPickActive = (active: boolean) => {
     document.body.style.cursor = active ? 'crosshair' : ''
     if (!badgeEl) return
-    badgeEl.textContent = badgeLabel(active)
+    badgeEl.textContent = active ? BADGE_LABEL_PICKING : BADGE_LABEL_IDLE
     applyBadgeColors(active)
     if (!active) removeTooltip()
+  }
+
+  const dispose = () => {
+    if (flashTimeout) clearTimeout(flashTimeout)
+    flashTimeout = null
+    removeTooltip()
   }
 
   const mountBadge = () => {
     badgeEl = document.createElement('button')
     badgeEl.id = UI_IDS.badge
     badgeEl.type = 'button'
-    badgeEl.textContent = badgeLabel(false)
-    Object.assign(badgeEl.style, LAYOUT.badge, {
-      background: theme.badgeBackground,
-      color: theme.badgeText,
-      border: `1px solid ${theme.badgeBorder}`,
-    })
+    badgeEl.textContent = BADGE_LABEL_IDLE
+    Object.assign(badgeEl.style, LAYOUT.badge)
     badgeEl.addEventListener('click', (event) => {
       event.stopPropagation()
       onTogglePick()
     })
     root.appendChild(badgeEl)
+    applyBadgeColors(false)
   }
 
   return {
@@ -116,6 +120,7 @@ export function createLocatorOverlayUi(
     showSourceTooltip,
     flashMessage,
     removeTooltip,
+    dispose,
     getActiveEl: () => activeEl,
   }
 }

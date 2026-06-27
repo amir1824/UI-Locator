@@ -4,7 +4,6 @@ import {
   IDE_ORDER,
   formatSourceLocation,
   isLocatorIde,
-  nextClickTarget,
   parseSourceLocation,
   resolveIde,
 } from '../../src/shared/index.js'
@@ -57,18 +56,6 @@ describe('resolveIde', () => {
 
   it('returns resolved ide when allowed', () => {
     expect(resolveIde('vscode', ['auto', 'vscode'])).toBe('vscode')
-  })
-})
-
-describe('nextClickTarget', () => {
-  it('stays on tsx when css is unavailable', () => {
-    expect(nextClickTarget('tsx', false)).toBe('tsx')
-    expect(nextClickTarget('css', false)).toBe('tsx')
-  })
-
-  it('toggles between tsx and css when css exists', () => {
-    expect(nextClickTarget('tsx', true)).toBe('css')
-    expect(nextClickTarget('css', true)).toBe('tsx')
   })
 })
 

@@ -53,23 +53,7 @@ function withAlpha(hex: string, alpha: number): string {
 
 function buildTheme(colors: ThemeColors, preset?: LocatorThemePreset): LocatorTheme {
   const { background, text, accent } = colors
-  if (preset === 'light') {
-    return {
-      badgeBackground: background,
-      badgeText: text,
-      badgeActiveBackground: background,
-      badgeActiveText: accent,
-      badgeBorder: LIGHT_BADGE_BORDER,
-      badgeActiveBorder: accent,
-      tooltipBackground: background,
-      tooltipText: text,
-      tooltipBorder: LIGHT_BADGE_BORDER,
-      highlightBorder: accent,
-      highlightBackground: withAlpha(accent, HIGHLIGHT_ALPHA),
-      highlightShadow: withAlpha(background, SHADOW_ALPHA),
-    }
-  }
-  return {
+  const base: LocatorTheme = {
     badgeBackground: background,
     badgeText: accent,
     badgeActiveBackground: accent,
@@ -82,6 +66,15 @@ function buildTheme(colors: ThemeColors, preset?: LocatorThemePreset): LocatorTh
     highlightBorder: accent,
     highlightBackground: withAlpha(accent, HIGHLIGHT_ALPHA),
     highlightShadow: withAlpha(background, SHADOW_ALPHA),
+  }
+  if (preset !== 'light') return base
+  return {
+    ...base,
+    badgeText: text,
+    badgeActiveBackground: background,
+    badgeActiveText: accent,
+    badgeBorder: LIGHT_BADGE_BORDER,
+    tooltipBorder: LIGHT_BADGE_BORDER,
   }
 }
 

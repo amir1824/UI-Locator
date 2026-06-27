@@ -1,5 +1,6 @@
+import type { IncomingMessage } from 'node:http'
 import { existsSync } from 'node:fs'
-import { isAbsolute, resolve } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 import { IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
@@ -39,10 +40,23 @@ function readQuery(url: string, defaultIde: LocatorIde) {
   }
 }
 
+function isInsideRoot(resolved: string, root: string): boolean {
+  const rel = relative(root, resolved)
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
+}
+
+function isAllowedRequest(req: IncomingMessage): boolean {
+  const origin = req.headers.origin
+  const host = req.headers.host
+  if (origin && host && new URL(origin).host !== host) return false
+  if (req.headers['sec-fetch-site'] === 'cross-site') return false
+  return true
+}
+
 function resolveFilePath(file: string, root: string): string {
   const viteDevMatch = file.match(/^\/src\/(.+)$/)
   if (viteDevMatch) return resolve(root, 'src', viteDevMatch[1])
-  if (isAbsolute(file)) return file
+  if (isAbsolute(file)) return resolve(file)
   return resolve(root, file)
 }
 
@@ -70,6 +84,12 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
     configureServer(server) {
       server.middlewares.use(config.endpoint, (req, res) => {
+        if (!isAllowedRequest(req)) {
+          res.writeHead(403)
+          res.end('forbidden')
+          return
+        }
+
         const { file, line, col, ide } = readQuery(req.url ?? '', config.ides[0] ?? 'auto')
 
         if (!file) {
@@ -80,6 +100,11 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
         try {
           const resolvedFile = resolveFilePath(file, server.config.root)
+          if (!isInsideRoot(resolvedFile, server.config.root)) {
+            res.writeHead(403)
+            res.end('outside project')
+            return
+          }
           if (!existsSync(resolvedFile)) {
             res.writeHead(404)
             res.end('file not found')

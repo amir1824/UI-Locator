@@ -102,7 +102,7 @@ describe('sourceLocator vite plugin', () => {
     await server.close()
   })
 
-  it('opens editor for absolute file paths', async () => {
+  it('opens editor for absolute file paths inside project root', async () => {
     mkdirSync(join(root, 'src'), { recursive: true })
     const filePath = join(root, 'src', 'App.tsx')
     writeFileSync(filePath, '<div />')
@@ -125,6 +125,78 @@ describe('sourceLocator vite plugin', () => {
       'vscode',
       IDE_ORDER,
     )
+
+    await server.close()
+  })
+
+  it('returns 403 for files outside project root', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    const filePath = join(root, 'src', 'App.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const outsidePath = join(tmpdir(), 'outside.tsx')
+    writeFileSync(outsidePath, '<div />')
+
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=${encodeURIComponent(outsidePath)}&line=1&col=1`,
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.text()).toBe('outside project')
+    expect(openInEditor).not.toHaveBeenCalled()
+
+    await server.close()
+  })
+
+  it('returns 403 for path traversal outside project root', async () => {
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=${encodeURIComponent('../../etc/passwd')}&line=1&col=1`,
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.text()).toBe('outside project')
+    expect(openInEditor).not.toHaveBeenCalled()
+
+    await server.close()
+  })
+
+  it('returns 403 for cross-origin requests', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    const filePath = join(root, 'src', 'App.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=/src/App.tsx&line=1&col=1`,
+      { headers: { Origin: 'https://evil.example' } },
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.text()).toBe('forbidden')
+    expect(openInEditor).not.toHaveBeenCalled()
 
     await server.close()
   })

@@ -44,13 +44,12 @@ No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev
 
 1. Click the badge (bottom-right): **Locator**
 2. Hover elements — blue highlight + file paths in tooltip
-3. Click to open source — cycles **TSX → CSS → TSX** when both exist
+3. Click to open the TSX source file in your IDE
 4. **Esc** — cancel pick mode
 
 | Shortcut | Action |
 |----------|--------|
-| Click | Open TSX (or cycle TSX/CSS) |
-| **Shift+C** | Open CSS/style directly |
+| Click | Open TSX source |
 | Esc | Cancel pick |
 
 ## Exports
@@ -80,7 +79,7 @@ Control overlay colors (badge, tooltip, highlight). Presets or custom colors:
 | Preset | Look |
 |--------|------|
 | `'default'` | Dark slate + cyan accent |
-| `'light'` | White background + blue accent |
+| `'light'` | White background + blue accent (also used when `theme` is omitted) |
 | `'dark'` | Black background + white/gray text |
 | `'blue'` | Navy background + light blue accent |
 
@@ -107,20 +106,6 @@ initSourceLocator({
 | `background` | Badge & tooltip background |
 | `text` | Tooltip text |
 | `accent` | Borders, highlight, badge label |
-
-## CSS Detection
-
-When an element has styles from a project `.css` file (e.g. `index.css` custom classes like `.glass`), the tooltip shows:
-
-```
-components/DashboardStats.tsx
-CSS: index.css
-Click → TSX | next: CSS
-```
-
-Click cycles between opening the TSX and CSS file.
-
-**Limitation:** Tailwind utility classes (`bg-slate-950`, etc.) are injected as inline `<style>` tags with no `.css` href — no CSS file is shown for those. CSS detection works for external `.css` stylesheets only. CSS opens at line 1 in v1.
 
 ## MFE Safety
 
@@ -162,7 +147,7 @@ sourceLocator()
 sourceLocator({ ides: ['vscode'] })
 ```
 
-The `ides` option controls which editors the server may open. The client always uses auto-detection.
+The `ides` option controls which editors the server may open. The browser client always sends `ide=auto`; the server resolves that via `resolveIde` against your `ides` list.
 
 ### Explicit editor
 
@@ -190,7 +175,6 @@ REACT_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/cod
 
 - Dev only — no production impact
 - JSX/TSX only for `data-source` injection
-- CSS line 1 only (no source-map line mapping yet)
 
 ## License
 
