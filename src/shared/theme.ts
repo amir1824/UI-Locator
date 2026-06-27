@@ -14,6 +14,7 @@ export type LocatorTheme = {
   badgeActiveBackground: string
   badgeActiveText: string
   badgeBorder: string
+  badgeActiveBorder: string
   tooltipBackground: string
   tooltipText: string
   tooltipBorder: string
@@ -30,10 +31,12 @@ type ThemeColors = {
 
 const PRESET_COLORS: Record<LocatorThemePreset, ThemeColors> = {
   default: { background: '#0f172a', text: '#f8fafc', accent: '#38bdf8' },
-  light: { background: '#ffffff', text: '#0f172a', accent: '#2563eb' },
+  light: { background: '#ffffff', text: '#111827', accent: '#2563eb' },
   dark: { background: '#000000', text: '#ffffff', accent: '#a3a3a3' },
   blue: { background: '#1e3a8a', text: '#eff6ff', accent: '#60a5fa' },
 }
+
+const LIGHT_BADGE_BORDER = '#d1d5db'
 
 const HEX_COLOR_LENGTH = 7
 const RGB_CHANNEL_MAX = 255
@@ -48,14 +51,31 @@ function withAlpha(hex: string, alpha: number): string {
   return `${hex}${channel}`
 }
 
-function buildTheme(colors: ThemeColors): LocatorTheme {
+function buildTheme(colors: ThemeColors, preset?: LocatorThemePreset): LocatorTheme {
   const { background, text, accent } = colors
+  if (preset === 'light') {
+    return {
+      badgeBackground: background,
+      badgeText: text,
+      badgeActiveBackground: background,
+      badgeActiveText: accent,
+      badgeBorder: LIGHT_BADGE_BORDER,
+      badgeActiveBorder: accent,
+      tooltipBackground: background,
+      tooltipText: text,
+      tooltipBorder: LIGHT_BADGE_BORDER,
+      highlightBorder: accent,
+      highlightBackground: withAlpha(accent, HIGHLIGHT_ALPHA),
+      highlightShadow: withAlpha(background, SHADOW_ALPHA),
+    }
+  }
   return {
     badgeBackground: background,
     badgeText: accent,
     badgeActiveBackground: accent,
     badgeActiveText: background,
     badgeBorder: accent,
+    badgeActiveBorder: accent,
     tooltipBackground: background,
     tooltipText: text,
     tooltipBorder: accent,
@@ -66,8 +86,8 @@ function buildTheme(colors: ThemeColors): LocatorTheme {
 }
 
 export function resolveTheme(input?: LocatorThemeInput): LocatorTheme {
-  const base = PRESET_COLORS.default
-  if (!input) return buildTheme(base)
-  if (typeof input === 'string') return buildTheme(PRESET_COLORS[input] ?? base)
-  return buildTheme({ ...base, ...input })
+  const lightBase = PRESET_COLORS.light
+  if (!input) return buildTheme(lightBase, 'light')
+  if (typeof input === 'string') return buildTheme(PRESET_COLORS[input] ?? lightBase, input)
+  return buildTheme({ ...lightBase, ...input }, 'light')
 }

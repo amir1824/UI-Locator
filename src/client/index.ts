@@ -1,5 +1,6 @@
 import { startPickController } from './controller.js'
 import type { ClientConfig } from './controller.js'
+import { HOST_LAYOUT } from './overlay-styles.js'
 
 declare global {
   interface Window {
@@ -15,6 +16,7 @@ export function initSourceLocator(config: ClientConfig): void {
 
   const host = document.createElement('div')
   host.id = HOST_ID
+  Object.assign(host.style, HOST_LAYOUT)
   const root = host.attachShadow({ mode: 'open' })
   document.body.appendChild(host)
 

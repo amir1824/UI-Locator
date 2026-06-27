@@ -14,7 +14,7 @@ vi.mock('launch-editor/guess.js', () => ({
   default: mocks.guessEditor,
 }))
 
-import { resolveAutoEditor, resolveCliPath, toLaunchEditorName } from '../../src/vite/editor-cli.js'
+import { formatLaunchEditorCommand, resolveAutoEditor, resolveCliPath, toLaunchEditorName } from '../../src/vite/editor-cli.js'
 
 const VSCODE_CLI = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code'
 
@@ -49,6 +49,16 @@ describe('resolveCliPath', () => {
     mocks.existsSync.mockReturnValue(false)
 
     expect(resolveCliPath('code')).toBe('code')
+  })
+})
+
+describe('formatLaunchEditorCommand', () => {
+  it('quotes paths that contain spaces', () => {
+    expect(formatLaunchEditorCommand(VSCODE_CLI)).toBe(`"${VSCODE_CLI}"`)
+  })
+
+  it('leaves bare commands unchanged', () => {
+    expect(formatLaunchEditorCommand('code')).toBe('code')
   })
 })
 

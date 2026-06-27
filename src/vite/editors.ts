@@ -1,7 +1,7 @@
 import launch from 'launch-editor'
 import { resolveIde } from '../shared/index.js'
 import type { LocatorIde, SourceLocation } from '../shared/index.js'
-import { resolveAutoEditor, resolveCliPath, toLaunchEditorName } from './editor-cli.js'
+import { formatLaunchEditorCommand, resolveAutoEditor, resolveCliPath, toLaunchEditorName } from './editor-cli.js'
 
 export function openInEditor(loc: SourceLocation, ideParam: string, allowed: LocatorIde[]): void {
   const ide = resolveIde(ideParam, allowed)
@@ -9,12 +9,12 @@ export function openInEditor(loc: SourceLocation, ideParam: string, allowed: Loc
   if (ide === 'auto') {
     const resolved = resolveAutoEditor()
     if (resolved) {
-      launch(spec, resolved)
+      launch(spec, formatLaunchEditorCommand(resolved))
       return
     }
     launch(spec)
     return
   }
   const command = resolveCliPath(toLaunchEditorName(ide))
-  launch(spec, command)
+  launch(spec, formatLaunchEditorCommand(command))
 }

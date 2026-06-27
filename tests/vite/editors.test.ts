@@ -16,6 +16,9 @@ vi.mock('../../src/vite/editor-cli.js', () => ({
   resolveAutoEditor: mocks.resolveAutoEditor,
   resolveCliPath: mocks.resolveCliPath,
   toLaunchEditorName: mocks.toLaunchEditorName,
+  formatLaunchEditorCommand: vi.fn((command: string) =>
+    command.includes(' ') ? `"${command}"` : command,
+  ),
 }))
 
 import { IDE_ORDER } from '../../src/shared/index.js'
@@ -37,7 +40,7 @@ describe('openInEditor', () => {
     openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
 
     expect(mocks.resolveAutoEditor).toHaveBeenCalledOnce()
-    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:10:5', VSCODE_CLI)
+    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:10:5', `"${VSCODE_CLI}"`)
   })
 
   it('falls back to bare auto launch when no editor is resolved', () => {
@@ -67,7 +70,7 @@ describe('openInEditor', () => {
 
     expect(mocks.toLaunchEditorName).toHaveBeenCalledWith('vscode')
     expect(mocks.resolveCliPath).toHaveBeenCalledWith('code')
-    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:3:1', VSCODE_CLI)
+    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:3:1', `"${VSCODE_CLI}"`)
   })
 
   it('falls back to allowed list for unknown ide', () => {
@@ -76,6 +79,6 @@ describe('openInEditor', () => {
     openInEditor({ file: '/app/src/App.tsx', line: '1', col: '1' }, 'unknown', ['vscode'])
 
     expect(mocks.toLaunchEditorName).toHaveBeenCalledWith('vscode')
-    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:1:1', VSCODE_CLI)
+    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:1:1', `"${VSCODE_CLI}"`)
   })
 })

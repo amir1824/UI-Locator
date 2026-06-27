@@ -5,7 +5,6 @@ import {
   formatSourceLocation,
   isLocatorIde,
   nextClickTarget,
-  nextIde,
   parseSourceLocation,
   resolveIde,
 } from '../../src/shared/index.js'
@@ -58,23 +57,6 @@ describe('resolveIde', () => {
 
   it('returns resolved ide when allowed', () => {
     expect(resolveIde('vscode', ['auto', 'vscode'])).toBe('vscode')
-  })
-})
-
-describe('nextIde', () => {
-  it('cycles through the default order', () => {
-    expect(nextIde('auto')).toBe('cursor')
-    expect(nextIde('cursor')).toBe('vscode')
-    expect(nextIde('vscode')).toBe('webstorm')
-    expect(nextIde('webstorm')).toBe('auto')
-  })
-
-  it('falls back to default when current is missing from order', () => {
-    expect(nextIde(DEFAULT_IDE, ['vscode'])).toBe('vscode')
-  })
-
-  it('uses custom order', () => {
-    expect(nextIde('vscode', ['vscode', 'cursor'])).toBe('cursor')
   })
 })
 

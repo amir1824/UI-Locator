@@ -42,11 +42,16 @@ No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev
 
 ## Pick Mode
 
-1. Click the badge (bottom-right): **Source Locator (auto) — click to pick**
+1. Click the badge (bottom-right): **Locator**
 2. Hover elements — blue highlight + file paths in tooltip
 3. Click to open source — cycles **TSX → CSS → TSX** when both exist
 4. **Esc** — cancel pick mode
-5. **Shift+L** — cycle IDE (session only, resets on refresh)
+
+| Shortcut | Action |
+|----------|--------|
+| Click | Open TSX (or cycle TSX/CSS) |
+| **Shift+C** | Open CSS/style directly |
+| Esc | Cancel pick |
 
 ## Exports
 
@@ -89,7 +94,6 @@ import { initSourceLocator } from 'vite-plugin-source-locator/client'
 initSourceLocator({
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
-  ides: ['auto', 'cursor', 'vscode', 'webstorm'],
   theme: {
     background: '#ffffff',
     text: '#000000',
@@ -132,7 +136,6 @@ import { initSourceLocator } from 'vite-plugin-source-locator/client'
 initSourceLocator({
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
-  ides: ['auto', 'cursor', 'vscode', 'webstorm'],
   theme: 'blue',
 })
 ```
@@ -157,12 +160,9 @@ sourceLocator()
 
 // VS Code only
 sourceLocator({ ides: ['vscode'] })
-
-// auto + manual override with Shift+L (session only)
-sourceLocator({ ides: ['auto', 'vscode'] })
 ```
 
-The first entry in `ides` is the default. Shift+L cycles through the list in memory (resets on page refresh).
+The `ides` option controls which editors the server may open. The client always uses auto-detection.
 
 ### Explicit editor
 

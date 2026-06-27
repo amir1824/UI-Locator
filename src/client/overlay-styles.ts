@@ -4,18 +4,26 @@ export const UI_IDS = {
   highlight: 'source-locator-highlight',
 } as const
 
+export const HOST_LAYOUT = {
+  position: 'fixed',
+  inset: '0',
+  zIndex: '99999',
+  pointerEvents: 'none',
+} as const
+
 export const LAYOUT = {
   badge: {
     position: 'fixed',
     bottom: '12px',
     right: '12px',
-    padding: '8px 12px',
-    borderRadius: '999px',
-    fontSize: '11px',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    fontSize: '12px',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     zIndex: '99999',
     cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
+    pointerEvents: 'auto',
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08)',
   },
   tooltip: {
     position: 'fixed',

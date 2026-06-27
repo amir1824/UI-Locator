@@ -1,12 +1,6 @@
 import { parseSourceLocation } from '../shared/index.js'
-import type { ClickTarget } from '../shared/index.js'
 
 const DEFAULT_LINE = '1'
-
-const CLICK_PROMPT_ORDER: Record<ClickTarget, readonly [string, string]> = {
-  tsx: ['TSX', 'CSS'],
-  css: ['CSS', 'TSX'],
-}
 
 function formatSourceLabel(source: string, prefix?: string): string {
   const { file, line } = parseSourceLocation(source)
@@ -19,7 +13,6 @@ function formatSourceLabel(source: string, prefix?: string): string {
 export function buildTooltipText(
   tsxSource: string | undefined,
   cssSource: string | undefined,
-  clickTarget: ClickTarget,
 ): string {
   const lines: string[] = []
   if (tsxSource) lines.push(formatSourceLabel(tsxSource, 'TSX'))
@@ -29,7 +22,6 @@ export function buildTooltipText(
     lines.push('Click → open TSX')
     return lines.join('\n')
   }
-  const [first, second] = CLICK_PROMPT_ORDER[clickTarget]
-  lines.push(`Click → open ${first}`, `Click again → open ${second}`)
+  lines.push('Click → open TSX', 'Shift+C → CSS')
   return lines.join('\n')
 }

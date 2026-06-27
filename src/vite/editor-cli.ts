@@ -47,6 +47,13 @@ export function resolveCliPath(command: string): string {
   return command
 }
 
+export function formatLaunchEditorCommand(command: string): string {
+  if (command.includes(' ')) {
+    return `"${command}"`
+  }
+  return command
+}
+
 export function resolveAutoEditor(): string | null {
   const [editor] = guessEditor()
   if (!editor) return null

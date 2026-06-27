@@ -1,12 +1,11 @@
-import { nextClickTarget, nextIde, parseSourceLocation, resolveTheme } from '../shared/index.js'
-import type { ClickTarget, LocatorIde, LocatorThemeInput } from '../shared/index.js'
+import { DEFAULT_IDE, nextClickTarget, parseSourceLocation, resolveTheme } from '../shared/index.js'
+import type { ClickTarget, LocatorThemeInput } from '../shared/index.js'
 import { findCssSource } from './css-source.js'
 import { createLocatorOverlayUi } from './overlay.js'
 
 export type ClientConfig = {
   endpoint: string
   attribute: string
-  ides: LocatorIde[]
   theme?: LocatorThemeInput
 }
 
@@ -28,13 +27,13 @@ function getSourceEl(target: Element | null, attribute: string, host: Element): 
   return el instanceof HTMLElement ? el : null
 }
 
-async function openSourceInEditor(source: string, config: ClientConfig, activeIde: LocatorIde): Promise<void> {
+async function openSourceInEditor(source: string, config: ClientConfig): Promise<void> {
   const loc = parseSourceLocation(source)
   const params = new URLSearchParams({
     file: loc.file,
     line: loc.line,
     col: loc.col,
-    ide: activeIde,
+    ide: DEFAULT_IDE,
   })
   await fetch(`${config.endpoint}?${params.toString()}`)
 }
@@ -52,13 +51,7 @@ function resolveOpenSource(sources: ElementSources): string | undefined {
 export function startPickController(root: ShadowRoot, host: Element, config: ClientConfig): () => void {
   let pickMode = false
   let sources: ElementSources = EMPTY_SOURCES
-  let activeIde: LocatorIde = config.ides[0] ?? 'auto'
-  const ui = createLocatorOverlayUi(
-    root,
-    () => setPickMode(!pickMode),
-    resolveTheme(config.theme),
-    () => activeIde,
-  )
+  const ui = createLocatorOverlayUi(root, () => setPickMode(!pickMode), resolveTheme(config.theme))
 
   function setPickMode(active: boolean) {
     pickMode = active
@@ -77,7 +70,7 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
       return
     }
     syncSources(el)
-    ui.showSourceTooltip(el, sources.tsx, sources.css, sources.clickTarget, x, y)
+    ui.showSourceTooltip(el, sources.tsx, sources.css, x, y)
   }
 
   const onMouseMove = (e: MouseEvent) => {
@@ -88,15 +81,22 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
     updateHover(e.target as Element, e.clientX, e.clientY)
   }
 
-  const onKeyDown = (e: KeyboardEvent) => {
+  const onKeyDown = async (e: KeyboardEvent) => {
     if (e.key === 'Escape' && pickMode) {
       setPickMode(false)
       return
     }
-    if (!e.shiftKey || e.key !== 'L') return
-    activeIde = nextIde(activeIde, config.ides)
-    if (!pickMode) ui.refreshBadgeLabel()
-    ui.flashMessage(`IDE: ${activeIde}`)
+    if (e.shiftKey && e.key === 'C' && pickMode) {
+      const el = ui.getActiveEl()
+      if (!(el instanceof HTMLElement)) return
+      syncSources(el)
+      if (!sources.css) {
+        ui.flashMessage('No CSS for this element')
+        return
+      }
+      await openSourceInEditor(sources.css, config)
+      return
+    }
   }
 
   const onClick = async (e: MouseEvent) => {
@@ -112,9 +112,9 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
       return
     }
 
-    await openSourceInEditor(openSource, config, activeIde)
+    await openSourceInEditor(openSource, config)
     sources = { ...sources, clickTarget: nextClickTarget(sources.clickTarget, !!sources.css) }
-    ui.showSourceTooltip(el, sources.tsx, sources.css, sources.clickTarget, e.clientX, e.clientY)
+    ui.showSourceTooltip(el, sources.tsx, sources.css, e.clientX, e.clientY)
   }
 
   document.addEventListener('keydown', onKeyDown)

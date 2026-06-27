@@ -51,7 +51,6 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   const clientConfig = {
     endpoint: config.endpoint,
     attribute: config.attribute,
-    ides: config.ides,
     theme: config.theme,
   }
 

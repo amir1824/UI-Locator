@@ -32,12 +32,6 @@ export function resolveIde(value: string, allowed: LocatorIde[]): LocatorIde {
   return value
 }
 
-export function nextIde(current: LocatorIde, order: LocatorIde[] = IDE_ORDER): LocatorIde {
-  const index = order.indexOf(current)
-  const nextIndex = (index + 1) % order.length
-  return order[nextIndex] ?? DEFAULT_IDE
-}
-
 export function parseSourceLocation(raw: string): SourceLocation {
   const parts = raw.split(':')
   if (parts.length < 3) return { file: raw, line: '1', col: '1' }
