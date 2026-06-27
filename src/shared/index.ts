@@ -34,17 +34,22 @@ export function nextIde(current: LocatorIde, order: LocatorIde[] = IDE_ORDER): L
 
 export function parseSourceLocation(raw: string): SourceLocation {
   const parts = raw.split(':')
-  const col = parts.pop()!
-  const line = parts.pop()!
-  const file = parts.join(':')
-  return { file, line, col }
+  if (parts.length < 3) return { file: raw, line: '1', col: '1' }
+  const col = parts.pop() ?? '1'
+  const line = parts.pop() ?? '1'
+  return { file: parts.join(':'), line, col }
 }
 
 export function formatSourceLocation(loc: SourceLocation): string {
   return `${loc.file}:${loc.line}:${loc.col}`
 }
 
+const CLICK_TARGET_TRANSITION: Record<ClickTarget, ClickTarget> = {
+  tsx: 'css',
+  css: 'tsx',
+}
+
 export function nextClickTarget(current: ClickTarget, hasCss: boolean): ClickTarget {
   if (!hasCss) return 'tsx'
-  return current === 'tsx' ? 'css' : 'tsx'
+  return CLICK_TARGET_TRANSITION[current]
 }

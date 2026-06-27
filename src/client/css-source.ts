@@ -1,12 +1,16 @@
 import { formatSourceLocation } from '../shared/index.js'
 
+const SELECTOR_ID_BONUS = 100
+const SELECTOR_CLASS_BONUS = 50
+const SELECTOR_CLASS_MATCH_BONUS = 200
+
 function scoreSelector(selector: string, element: Element): number {
   let score = selector.length
-  if (selector.includes('#')) score += 100
-  if (selector.includes('.')) score += 50
+  if (selector.includes('#')) score += SELECTOR_ID_BONUS
+  if (selector.includes('.')) score += SELECTOR_CLASS_BONUS
   if (element instanceof HTMLElement) {
     element.classList.forEach((cls) => {
-      if (selector.includes(`.${cls}`)) score += 200
+      if (selector.includes(`.${cls}`)) score += SELECTOR_CLASS_MATCH_BONUS
     })
   }
   return score

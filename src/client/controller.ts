@@ -17,6 +17,12 @@ type ElementSources = {
   clickTarget: ClickTarget
 }
 
+const EMPTY_SOURCES: ElementSources = Object.freeze({
+  tsx: undefined,
+  css: undefined,
+  clickTarget: 'tsx',
+})
+
 function getSourceEl(target: Element | null, attribute: string, host: Element): HTMLElement | null {
   if (!target || host.contains(target) || target === host) return null
   const el = target.closest(`[${attribute}]`)
@@ -41,19 +47,22 @@ function readElementSources(el: HTMLElement, attribute: string): ElementSources 
 }
 
 function resolveOpenSource(sources: ElementSources): string | undefined {
-  if (sources.clickTarget === 'css') return sources.css
-  return sources.tsx
+  return sources[sources.clickTarget]
 }
 
 export function startPickController(root: ShadowRoot, host: Element, config: ClientConfig): () => void {
   let pickMode = false
-  let sources: ElementSources = { tsx: undefined, css: undefined, clickTarget: 'tsx' }
+  let sources: ElementSources = EMPTY_SOURCES
   const ui = createLocatorOverlayUi(root, () => setPickMode(!pickMode), resolveTheme(config.theme))
 
   function setPickMode(active: boolean) {
     pickMode = active
     ui.setPickActive(active)
-    if (!active) sources = { tsx: undefined, css: undefined, clickTarget: 'tsx' }
+    if (!active) sources = EMPTY_SOURCES
+  }
+
+  const syncSources = (el: HTMLElement) => {
+    if (el !== ui.getActiveEl()) sources = readElementSources(el, config.attribute)
   }
 
   const updateHover = (target: Element | null, x: number, y: number) => {
@@ -62,9 +71,7 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
       ui.removeTooltip()
       return
     }
-    if (el !== ui.getActiveEl()) {
-      sources = readElementSources(el, config.attribute)
-    }
+    syncSources(el)
     ui.showSourceTooltip(el, sources.tsx, sources.css, sources.clickTarget, x, y)
   }
 
@@ -93,20 +100,15 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
     e.stopPropagation()
 
     const el = getSourceEl(e.target as Element, config.attribute, host)
-    if (!el) {
-      ui.flashMessage('No source for this element')
-      return
-    }
-
-    if (el !== ui.getActiveEl()) sources = readElementSources(el, config.attribute)
-    const openSource = resolveOpenSource(sources)
-    if (!openSource) {
+    if (el) syncSources(el)
+    const openSource = el && resolveOpenSource(sources)
+    if (!el || !openSource) {
       ui.flashMessage('No source for this element')
       return
     }
 
     await openSourceInEditor(openSource, config)
-    sources.clickTarget = nextClickTarget(sources.clickTarget, !!sources.css)
+    sources = { ...sources, clickTarget: nextClickTarget(sources.clickTarget, !!sources.css) }
     ui.showSourceTooltip(el, sources.tsx, sources.css, sources.clickTarget, e.clientX, e.clientY)
   }
 

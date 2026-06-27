@@ -16,8 +16,11 @@ export function cycleStoredIde(order: LocatorIde[]): LocatorIde {
   return next
 }
 
+const BADGE_PICKING_HINT = 'Esc to cancel'
+const BADGE_IDLE_HINT = 'click to pick'
+
 export function badgeLabel(picking: boolean): string {
   const ide = getStoredIde()
-  if (picking) return `Pick element (${ide}) — Esc to cancel`
-  return `Source Locator (${ide}) — click to pick`
+  if (picking) return `Pick element (${ide}) — ${BADGE_PICKING_HINT}`
+  return `Source Locator (${ide}) — ${BADGE_IDLE_HINT}`
 }

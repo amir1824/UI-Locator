@@ -137,14 +137,32 @@ initSourceLocator({
 })
 ```
 
+## IDE Setup
+
+IDE opening works on **macOS, Windows, and Linux** via [`launch-editor`](https://github.com/vitejs/launch-editor).
+
+The editor CLI must be available on your `PATH`:
+
+| IDE | CLI command |
+|-----|-------------|
+| Cursor | `cursor` |
+| VS Code | `code` |
+| WebStorm | `webstorm` |
+
+You can override the default editor with environment variables:
+
+- `LAUNCH_EDITOR=cursor`
+- `REACT_EDITOR=code`
+
+Shift+L cycles through the `ides` list configured in plugin options.
+
 ## Adding a New IDE
 
 1. Extend `LocatorIde` and `IDE_ORDER` in `src/shared/index.ts`
-2. Add entry to `EDITORS` in `src/vite/editors.ts`
+2. Use a [launch-editor supported editor name](https://github.com/vitejs/launch-editor#supported-editors) as the new `LocatorIde` value
 
 ## Limitations
 
-- macOS only for IDE opening
 - Dev only — no production impact
 - JSX/TSX only for `data-source` injection
 - CSS line 1 only (no source-map line mapping yet)

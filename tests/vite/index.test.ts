@@ -95,4 +95,30 @@ describe('sourceLocator vite plugin', () => {
 
     await server.close()
   })
+
+  it('opens editor for absolute file paths', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    const filePath = join(root, 'src', 'App.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=${encodeURIComponent(filePath)}&line=2&col=3&ide=vscode`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(openInEditor).toHaveBeenCalledWith(
+      { file: filePath, line: '2', col: '3' },
+      'vscode',
+    )
+
+    await server.close()
+  })
 })

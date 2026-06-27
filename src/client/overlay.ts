@@ -1,81 +1,13 @@
-import { parseSourceLocation } from '../shared/index.js'
 import type { ClickTarget, LocatorTheme } from '../shared/index.js'
+import { LAYOUT, UI_IDS } from './overlay-styles.js'
 import { badgeLabel } from './preference.js'
+import { buildTooltipText } from './tooltip-text.js'
 
-const UI_IDS = {
-  badge: 'source-locator-badge',
-  tooltip: 'source-locator-tooltip',
-  highlight: 'source-locator-highlight',
-} as const
-
-const LAYOUT = {
-  badge: {
-    position: 'fixed',
-    bottom: '12px',
-    right: '12px',
-    padding: '8px 12px',
-    borderRadius: '999px',
-    fontSize: '11px',
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    zIndex: '99999',
-    cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
-  },
-  tooltip: {
-    position: 'fixed',
-    padding: '8px 12px',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    zIndex: '99999',
-    pointerEvents: 'none',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
-    maxWidth: '420px',
-    whiteSpace: 'pre',
-    lineHeight: '1.5',
-  },
-  highlight: {
-    position: 'fixed',
-    borderWidth: '2px',
-    borderStyle: 'solid',
-    borderRadius: '4px',
-    pointerEvents: 'none',
-    zIndex: '99998',
-  },
-} as const
-
-function formatSourceLabel(source: string, prefix?: string): string {
-  const { file, line } = parseSourceLocation(source)
-  const name = file.split('/').pop() ?? file
-  const label = line !== '1' ? `${name}:${line}` : name
-  if (prefix) return `${prefix}: ${label}`
-  return label
-}
-
-function buildTooltipText(
-  tsxSource: string | undefined,
-  cssSource: string | undefined,
-  clickTarget: ClickTarget,
-): string {
-  const lines: string[] = []
-  if (tsxSource) lines.push(formatSourceLabel(tsxSource, 'TSX'))
-  if (cssSource) lines.push(formatSourceLabel(cssSource, 'CSS'))
-
-  if (!cssSource) {
-    lines.push('Click → open TSX')
-    return lines.join('\n')
-  }
-
-  if (clickTarget === 'tsx') {
-    lines.push('Click → open TSX')
-    lines.push('Click again → open CSS')
-    return lines.join('\n')
-  }
-
-  lines.push('Click → open CSS')
-  lines.push('Click again → open TSX')
-  return lines.join('\n')
-}
+const HIGHLIGHT_PADDING = 2
+const TOOLTIP_CURSOR_OFFSET = 16
+const FLASH_DURATION_MS = 1500
+const FLASH_HORIZONTAL_OFFSET = 80
+const FLASH_BOTTOM_OFFSET = 80
 
 export function createLocatorOverlayUi(
   root: ShadowRoot,
@@ -100,10 +32,10 @@ export function createLocatorOverlayUi(
     const highlight = document.createElement('div')
     highlight.id = UI_IDS.highlight
     Object.assign(highlight.style, LAYOUT.highlight, {
-      top: `${rect.top - 2}px`,
-      left: `${rect.left - 2}px`,
-      width: `${rect.width + 4}px`,
-      height: `${rect.height + 4}px`,
+      top: `${rect.top - HIGHLIGHT_PADDING}px`,
+      left: `${rect.left - HIGHLIGHT_PADDING}px`,
+      width: `${rect.width + HIGHLIGHT_PADDING * 2}px`,
+      height: `${rect.height + HIGHLIGHT_PADDING * 2}px`,
       borderColor: theme.highlightBorder,
       background: theme.highlightBackground,
       boxShadow: `0 0 0 1px ${theme.highlightShadow}`,
@@ -117,8 +49,8 @@ export function createLocatorOverlayUi(
     tooltip.id = UI_IDS.tooltip
     tooltip.textContent = text
     Object.assign(tooltip.style, LAYOUT.tooltip, {
-      top: `${y + 16}px`,
-      left: `${x + 16}px`,
+      top: `${y + TOOLTIP_CURSOR_OFFSET}px`,
+      left: `${x + TOOLTIP_CURSOR_OFFSET}px`,
       background: theme.tooltipBackground,
       color: theme.tooltipText,
       border: `1px solid ${theme.tooltipBorder}`,
@@ -141,8 +73,10 @@ export function createLocatorOverlayUi(
 
   const flashMessage = (text: string) => {
     if (flashTimeout) clearTimeout(flashTimeout)
-    showTooltip(text, null, window.innerWidth / 2 - 80, window.innerHeight - 80)
-    flashTimeout = setTimeout(removeTooltip, 1500)
+    const x = window.innerWidth / 2 - FLASH_HORIZONTAL_OFFSET
+    const y = window.innerHeight - FLASH_BOTTOM_OFFSET
+    showTooltip(text, null, x, y)
+    flashTimeout = setTimeout(removeTooltip, FLASH_DURATION_MS)
   }
 
   const applyBadgeColors = (active: boolean) => {

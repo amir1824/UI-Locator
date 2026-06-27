@@ -40,7 +40,8 @@ function readQuery(url: string) {
 }
 
 function resolveFilePath(file: string, root: string): string {
-  if (file.startsWith('/src/')) return resolve(root, file.slice(1))
+  const viteDevMatch = file.match(/^\/src\/(.+)$/)
+  if (viteDevMatch) return resolve(root, 'src', viteDevMatch[1])
   if (isAbsolute(file)) return file
   return resolve(root, file)
 }
