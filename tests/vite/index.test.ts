@@ -9,6 +9,7 @@ vi.mock('../../src/vite/editors.js', () => ({
   openInEditor: vi.fn(),
 }))
 
+import { IDE_ORDER } from '../../src/shared/index.js'
 import { openInEditor } from '../../src/vite/editors.js'
 import { sourceLocator } from '../../src/vite/index.js'
 
@@ -91,6 +92,11 @@ describe('sourceLocator vite plugin', () => {
 
     expect(response.status).toBe(200)
     expect(openInEditor).toHaveBeenCalledOnce()
+    expect(openInEditor).toHaveBeenCalledWith(
+      { file: filePath, line: '1', col: '1' },
+      'cursor',
+      IDE_ORDER,
+    )
     expect(existsSync(filePath)).toBe(true)
 
     await server.close()
@@ -117,6 +123,34 @@ describe('sourceLocator vite plugin', () => {
     expect(openInEditor).toHaveBeenCalledWith(
       { file: filePath, line: '2', col: '3' },
       'vscode',
+      IDE_ORDER,
+    )
+
+    await server.close()
+  })
+
+  it('defaults to vscode when ides is vscode only', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    const filePath = join(root, 'src', 'App.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator({ ides: ['vscode'] })],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=/src/App.tsx&line=1&col=1`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(openInEditor).toHaveBeenCalledWith(
+      { file: filePath, line: '1', col: '1' },
+      'vscode',
+      ['vscode'],
     )
 
     await server.close()

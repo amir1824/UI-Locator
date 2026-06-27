@@ -1,4 +1,4 @@
-import type { ClickTarget, LocatorTheme } from '../shared/index.js'
+import type { ClickTarget, LocatorIde, LocatorTheme } from '../shared/index.js'
 import { LAYOUT, UI_IDS } from './overlay-styles.js'
 import { badgeLabel } from './preference.js'
 import { buildTooltipText } from './tooltip-text.js'
@@ -13,6 +13,7 @@ export function createLocatorOverlayUi(
   root: ShadowRoot,
   onTogglePick: () => void,
   theme: LocatorTheme,
+  getActiveIde: () => LocatorIde,
 ) {
   let activeEl: Element | null = null
   let flashTimeout: ReturnType<typeof setTimeout> | null = null
@@ -88,20 +89,20 @@ export function createLocatorOverlayUi(
   const setPickActive = (active: boolean) => {
     document.body.style.cursor = active ? 'crosshair' : ''
     if (!badgeEl) return
-    badgeEl.textContent = badgeLabel(active)
+    badgeEl.textContent = badgeLabel(active, getActiveIde())
     applyBadgeColors(active)
     if (!active) removeTooltip()
   }
 
   const refreshBadgeLabel = () => {
-    if (badgeEl) badgeEl.textContent = badgeLabel(false)
+    if (badgeEl) badgeEl.textContent = badgeLabel(false, getActiveIde())
   }
 
   const mountBadge = () => {
     badgeEl = document.createElement('button')
     badgeEl.id = UI_IDS.badge
     badgeEl.type = 'button'
-    badgeEl.textContent = badgeLabel(false)
+    badgeEl.textContent = badgeLabel(false, getActiveIde())
     Object.assign(badgeEl.style, LAYOUT.badge, {
       background: theme.badgeBackground,
       color: theme.badgeText,

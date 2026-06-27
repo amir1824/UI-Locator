@@ -42,11 +42,11 @@ No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev
 
 ## Pick Mode
 
-1. Click the badge (bottom-right): **Source Locator (cursor) — click to pick**
+1. Click the badge (bottom-right): **Source Locator (auto) — click to pick**
 2. Hover elements — blue highlight + file paths in tooltip
 3. Click to open source — cycles **TSX → CSS → TSX** when both exist
 4. **Esc** — cancel pick mode
-5. **Shift+L** — cycle IDE: cursor → vscode → webstorm
+5. **Shift+L** — cycle IDE (session only, resets on refresh)
 
 ## Exports
 
@@ -63,7 +63,7 @@ sourceLocator({
   enabled: true,
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
-  ides: ['cursor', 'vscode', 'webstorm'],
+  ides: ['auto', 'cursor', 'vscode', 'webstorm'],
   theme: 'light',
 })
 ```
@@ -89,7 +89,7 @@ import { initSourceLocator } from 'vite-plugin-source-locator/client'
 initSourceLocator({
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
-  ides: ['cursor', 'vscode', 'webstorm'],
+  ides: ['auto', 'cursor', 'vscode', 'webstorm'],
   theme: {
     background: '#ffffff',
     text: '#000000',
@@ -132,7 +132,7 @@ import { initSourceLocator } from 'vite-plugin-source-locator/client'
 initSourceLocator({
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
-  ides: ['cursor', 'vscode', 'webstorm'],
+  ides: ['auto', 'cursor', 'vscode', 'webstorm'],
   theme: 'blue',
 })
 ```
@@ -141,7 +141,32 @@ initSourceLocator({
 
 IDE opening works on **macOS, Windows, and Linux** via [`launch-editor`](https://github.com/vitejs/launch-editor).
 
-The editor CLI must be available on your `PATH`:
+### Auto detection (default)
+
+By default, `ides` includes `'auto'` as the first entry. In `auto` mode, the plugin detects your open IDE:
+
+1. `LAUNCH_EDITOR` / `REACT_EDITOR` environment variable
+2. Running editor process (VS Code, Cursor, WebStorm, etc.)
+3. `VISUAL` / `EDITOR` environment variable
+
+No CLI on `PATH` is required if the editor is already running.
+
+```typescript
+// auto-detect open IDE (default)
+sourceLocator()
+
+// VS Code only
+sourceLocator({ ides: ['vscode'] })
+
+// auto + manual override with Shift+L (session only)
+sourceLocator({ ides: ['auto', 'vscode'] })
+```
+
+The first entry in `ides` is the default. Shift+L cycles through the list in memory (resets on page refresh).
+
+### Explicit editor
+
+When not using `auto`, the editor CLI should be on your `PATH`:
 
 | IDE | CLI command |
 |-----|-------------|
@@ -149,12 +174,10 @@ The editor CLI must be available on your `PATH`:
 | VS Code | `code` |
 | WebStorm | `webstorm` |
 
-You can override the default editor with environment variables:
+Override with environment variables:
 
-- `LAUNCH_EDITOR=cursor`
+- `LAUNCH_EDITOR=code`
 - `REACT_EDITOR=code`
-
-Shift+L cycles through the `ides` list configured in plugin options.
 
 ## Adding a New IDE
 

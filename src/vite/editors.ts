@@ -1,9 +1,13 @@
 import launch from 'launch-editor'
-import { DEFAULT_IDE, isLocatorIde } from '../shared/index.js'
-import type { SourceLocation } from '../shared/index.js'
+import { resolveIde } from '../shared/index.js'
+import type { LocatorIde, SourceLocation } from '../shared/index.js'
 
-export function openInEditor(loc: SourceLocation, ideParam: string): void {
-  const ide = isLocatorIde(ideParam) ? ideParam : DEFAULT_IDE
+export function openInEditor(loc: SourceLocation, ideParam: string, allowed: LocatorIde[]): void {
+  const ide = resolveIde(ideParam, allowed)
   const spec = `${loc.file}:${loc.line}:${loc.col}`
+  if (ide === 'auto') {
+    launch(spec)
+    return
+  }
   launch(spec, ide)
 }

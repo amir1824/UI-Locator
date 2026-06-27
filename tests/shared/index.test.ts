@@ -7,6 +7,7 @@ import {
   nextClickTarget,
   nextIde,
   parseSourceLocation,
+  resolveIde,
 } from '../../src/shared/index.js'
 
 describe('parseSourceLocation', () => {
@@ -35,6 +36,7 @@ describe('formatSourceLocation', () => {
 
 describe('isLocatorIde', () => {
   it('accepts known ides', () => {
+    expect(isLocatorIde('auto')).toBe(true)
     expect(isLocatorIde('cursor')).toBe(true)
     expect(isLocatorIde('vscode')).toBe(true)
     expect(isLocatorIde('webstorm')).toBe(true)
@@ -45,11 +47,26 @@ describe('isLocatorIde', () => {
   })
 })
 
+describe('resolveIde', () => {
+  it('returns fallback for unknown values', () => {
+    expect(resolveIde('unknown', ['vscode'])).toBe('vscode')
+  })
+
+  it('returns fallback when ide is not in allowed list', () => {
+    expect(resolveIde('cursor', ['vscode'])).toBe('vscode')
+  })
+
+  it('returns resolved ide when allowed', () => {
+    expect(resolveIde('vscode', ['auto', 'vscode'])).toBe('vscode')
+  })
+})
+
 describe('nextIde', () => {
   it('cycles through the default order', () => {
+    expect(nextIde('auto')).toBe('cursor')
     expect(nextIde('cursor')).toBe('vscode')
     expect(nextIde('vscode')).toBe('webstorm')
-    expect(nextIde('webstorm')).toBe('cursor')
+    expect(nextIde('webstorm')).toBe('auto')
   })
 
   it('falls back to default when current is missing from order', () => {
@@ -75,6 +92,12 @@ describe('nextClickTarget', () => {
 
 describe('IDE_ORDER', () => {
   it('includes all supported ides', () => {
-    expect(IDE_ORDER).toEqual(['cursor', 'vscode', 'webstorm'])
+    expect(IDE_ORDER).toEqual(['auto', 'cursor', 'vscode', 'webstorm'])
+  })
+})
+
+describe('DEFAULT_IDE', () => {
+  it('defaults to auto', () => {
+    expect(DEFAULT_IDE).toBe('auto')
   })
 })

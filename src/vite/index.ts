@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { isAbsolute, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
-import { DEFAULT_IDE, IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
+import { IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
 import type { LocatorIde, LocatorThemeInput } from '../shared/index.js'
 import { babelPluginAddSourceAttr } from './babel-plugin.js'
 import { openInEditor } from './editors.js'
@@ -29,13 +29,13 @@ function resolveOptions(options: SourceLocatorOptions = {}) {
   }
 }
 
-function readQuery(url: string) {
+function readQuery(url: string, defaultIde: LocatorIde) {
   const parsed = new URL(url, 'http://localhost')
   return {
     file: parsed.searchParams.get('file'),
     line: parsed.searchParams.get('line') ?? '1',
     col: parsed.searchParams.get('col') ?? '1',
-    ide: parsed.searchParams.get('ide') ?? DEFAULT_IDE,
+    ide: parsed.searchParams.get('ide') ?? defaultIde,
   }
 }
 
@@ -71,7 +71,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
     configureServer(server) {
       server.middlewares.use(config.endpoint, (req, res) => {
-        const { file, line, col, ide } = readQuery(req.url ?? '')
+        const { file, line, col, ide } = readQuery(req.url ?? '', config.ides[0] ?? 'auto')
 
         if (!file) {
           res.writeHead(400)
@@ -86,7 +86,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
             res.end('file not found')
             return
           }
-          openInEditor({ file: resolvedFile, line, col }, ide)
+          openInEditor({ file: resolvedFile, line, col }, ide, config.ides)
           res.writeHead(200, { 'Content-Type': 'text/plain' })
           res.end('ok')
         } catch {

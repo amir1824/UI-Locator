@@ -6,7 +6,7 @@ export type {
 } from './theme.js'
 export { resolveTheme } from './theme.js'
 
-export type LocatorIde = 'cursor' | 'vscode' | 'webstorm'
+export type LocatorIde = 'auto' | 'cursor' | 'vscode' | 'webstorm'
 
 export type SourceLocation = {
   file: string
@@ -18,12 +18,18 @@ export type ClickTarget = 'tsx' | 'css'
 
 export const SOURCE_ATTR = 'data-source'
 export const OPEN_ENDPOINT = '/__open-in-editor'
-export const STORAGE_KEY = 'locator-ide'
-export const DEFAULT_IDE: LocatorIde = 'cursor'
-export const IDE_ORDER: LocatorIde[] = ['cursor', 'vscode', 'webstorm']
+export const DEFAULT_IDE: LocatorIde = 'auto'
+export const IDE_ORDER: LocatorIde[] = ['auto', 'cursor', 'vscode', 'webstorm']
 
 export function isLocatorIde(value: string): value is LocatorIde {
   return IDE_ORDER.includes(value as LocatorIde)
+}
+
+export function resolveIde(value: string, allowed: LocatorIde[]): LocatorIde {
+  const fallback = allowed[0] ?? DEFAULT_IDE
+  if (!isLocatorIde(value)) return fallback
+  if (!allowed.includes(value)) return fallback
+  return value
 }
 
 export function nextIde(current: LocatorIde, order: LocatorIde[] = IDE_ORDER): LocatorIde {

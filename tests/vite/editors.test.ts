@@ -9,6 +9,7 @@ vi.mock('launch-editor', () => ({
   default: mocks.launch,
 }))
 
+import { IDE_ORDER } from '../../src/shared/index.js'
 import { openInEditor } from '../../src/vite/editors.js'
 
 describe('openInEditor', () => {
@@ -16,21 +17,27 @@ describe('openInEditor', () => {
     mocks.launch.mockReset()
   })
 
+  it('auto-detects editor when ide is auto', () => {
+    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+
+    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:10:5')
+  })
+
   it('launches cursor with file line and column', () => {
-    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'cursor')
+    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'cursor', IDE_ORDER)
 
     expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:10:5', 'cursor')
   })
 
   it('launches vscode when specified', () => {
-    openInEditor({ file: '/app/src/App.tsx', line: '3', col: '1' }, 'vscode')
+    openInEditor({ file: '/app/src/App.tsx', line: '3', col: '1' }, 'vscode', ['vscode'])
 
     expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:3:1', 'vscode')
   })
 
-  it('defaults to cursor for unknown ide', () => {
-    openInEditor({ file: '/app/src/App.tsx', line: '1', col: '1' }, 'unknown')
+  it('falls back to allowed list for unknown ide', () => {
+    openInEditor({ file: '/app/src/App.tsx', line: '1', col: '1' }, 'unknown', ['vscode'])
 
-    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:1:1', 'cursor')
+    expect(mocks.launch).toHaveBeenCalledWith('/app/src/App.tsx:1:1', 'vscode')
   })
 })
