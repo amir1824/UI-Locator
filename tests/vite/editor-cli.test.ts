@@ -14,9 +14,15 @@ vi.mock('launch-editor/guess.js', () => ({
   default: mocks.guessEditor,
 }))
 
-import { formatLaunchEditorCommand, resolveAutoEditor, resolveCliPath, toLaunchEditorName } from '../../src/vite/editor-cli.js'
+import {
+  buildCliCandidates,
+  formatLaunchEditorCommand,
+  resolveAutoEditor,
+  resolveCliPath,
+  toLaunchEditorName,
+} from '../../src/vite/editor-cli.js'
 
-const VSCODE_CLI = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code'
+const VSCODE_CLI = buildCliCandidates().code.find((path) => path.includes('/') || path.includes('\\'))!
 
 describe('toLaunchEditorName', () => {
   it('maps vscode to code', () => {

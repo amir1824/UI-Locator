@@ -8,7 +8,7 @@ const IDE_LAUNCH_NAMES: Record<Exclude<LocatorIde, 'auto'>, string> = {
   webstorm: 'webstorm',
 }
 
-function buildCliCandidates(): Record<string, string[]> {
+export function buildCliCandidates(): Record<string, string[]> {
   if (process.platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA ?? ''
     const programFiles = process.env.ProgramFiles ?? 'C:\\Program Files'

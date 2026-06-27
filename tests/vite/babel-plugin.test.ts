@@ -15,7 +15,7 @@ function transform(code: string, filename = '/app/src/Button.tsx') {
 describe('babelPluginAddSourceAttr', () => {
   it('adds data-source with file, line, and column', () => {
     const result = transform('<button>Click</button>')
-    expect(result?.code).toContain('data-source="/app/src/Button.tsx:')
+    expect(result?.code).toMatch(/data-source="[^"]*Button\.tsx:1:1"/)
   })
 
   it('does not add duplicate attributes', () => {

@@ -2,6 +2,7 @@
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServer } from 'vite'
 
@@ -12,6 +13,8 @@ vi.mock('../../src/vite/editors.js', () => ({
 import { IDE_ORDER } from '../../src/shared/index.js'
 import { openInEditor } from '../../src/vite/editors.js'
 import { sourceLocator } from '../../src/vite/index.js'
+
+const CLIENT_ENTRY = fileURLToPath(new URL('../../src/client/index.js', import.meta.url))
 
 describe('sourceLocator vite plugin', () => {
   let root: string
@@ -37,7 +40,7 @@ describe('sourceLocator vite plugin', () => {
     expect(resolved?.id).toBe('\0virtual:source-locator-client')
 
     const loaded = await server.pluginContainer.load(resolved!.id)
-    expect(loaded).toContain('client/index.js')
+    expect(loaded).toBe(`import ${JSON.stringify(CLIENT_ENTRY)}`)
 
     await server.close()
   })
