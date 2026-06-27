@@ -149,7 +149,7 @@ By default, `ides` includes `'auto'` as the first entry. In `auto` mode, the plu
 2. Running editor process (VS Code, Cursor, WebStorm, etc.)
 3. `VISUAL` / `EDITOR` environment variable
 
-No CLI on `PATH` is required if the editor is already running.
+The plugin resolves known app-bundle CLI paths automatically (e.g. VS Code on macOS). If detection still fails, install the editor shell command or set `LAUNCH_EDITOR` to the full CLI path.
 
 ```typescript
 // auto-detect open IDE (default)
@@ -166,7 +166,7 @@ The first entry in `ides` is the default. Shift+L cycles through the list in mem
 
 ### Explicit editor
 
-When not using `auto`, the editor CLI should be on your `PATH`:
+When not using `auto`, the plugin resolves common install paths first, then falls back to the CLI name on `PATH`:
 
 | IDE | CLI command |
 |-----|-------------|
@@ -174,10 +174,12 @@ When not using `auto`, the editor CLI should be on your `PATH`:
 | VS Code | `code` |
 | WebStorm | `webstorm` |
 
-Override with environment variables:
+If opening fails with `ENOENT`, install the shell command in your editor (VS Code: **Shell Command: Install 'code' command in PATH**) or set a full path:
 
-- `LAUNCH_EDITOR=code`
-- `REACT_EDITOR=code`
+```
+LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+REACT_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+```
 
 ## Adding a New IDE
 
