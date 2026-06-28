@@ -20,6 +20,8 @@ const VIRTUAL_CLIENT_ID = 'virtual:source-locator-client'
 const RESOLVED_VIRTUAL_CLIENT_ID = '\0virtual:source-locator-client'
 const CLIENT_ENTRY = fileURLToPath(new URL('../client/index.js', import.meta.url))
 
+type ReactBabelConfig = { plugins: unknown[] }
+
 function resolveOptions(options: SourceLocatorOptions = {}) {
   return {
     enabled: options.enabled ?? true,
@@ -71,6 +73,20 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   return {
     name: 'source-locator',
     apply: 'serve',
+
+    api: {
+      reactBabel(babelConfig: ReactBabelConfig) {
+        const hasPlugin = babelConfig.plugins.some((p) => {
+          if (Array.isArray(p)) {
+            return p[0] === babelPluginAddSourceAttr
+          }
+          return p === babelPluginAddSourceAttr
+        })
+        if (!hasPlugin) {
+          babelConfig.plugins.push([babelPluginAddSourceAttr, { attribute: config.attribute }])
+        }
+      },
+    },
 
     resolveId(id) {
       if (id === VIRTUAL_CLIENT_ID) return RESOLVED_VIRTUAL_CLIENT_ID
@@ -127,7 +143,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
         tags: [
           {
             tag: 'script',
-            children: `window.__SOURCE_LOCATOR_CONFIG__=${JSON.stringify(clientConfig)}`,
+            children: `window.__SOURCE_LOCATOR_CONFIG__=${JSON.stringify(clientConfig).replace(/</g, '\\u003c')}`,
             injectTo: 'head',
           },
           {

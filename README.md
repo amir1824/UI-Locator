@@ -30,12 +30,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { sourceLocator } from 'vite-plugin-source-locator/vite'
 
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   plugins: [
-    react(command === 'serve' ? sourceLocator.babel() : undefined),
+    react(),
     sourceLocator(),
   ],
-}))
+})
 ```
 
 No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev.
