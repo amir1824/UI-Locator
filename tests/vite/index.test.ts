@@ -204,6 +204,31 @@ describe('sourceLocator vite plugin', () => {
     await server.close()
   })
 
+  it('only opens the editor once for a rapid duplicate request of the same location', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    const filePath = join(root, 'src', 'App.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const url = `http://localhost:${port}/__open-in-editor?file=/src/App.tsx&line=1&col=1&ide=cursor`
+
+    const first = await fetch(url)
+    const second = await fetch(url)
+
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect(openInEditor).toHaveBeenCalledOnce()
+
+    await server.close()
+  })
+
   it('defaults to vscode when ides is vscode only', async () => {
     mkdirSync(join(root, 'src'), { recursive: true })
     const filePath = join(root, 'src', 'App.tsx')

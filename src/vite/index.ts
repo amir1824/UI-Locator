@@ -7,6 +7,7 @@ import { IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
 import type { LocatorIde, LocatorThemeInput } from '../shared/index.js'
 import { babelPluginAddSourceAttr } from './babel-plugin.js'
 import { openInEditor } from './editors.js'
+import { createOpenRequestThrottle } from './open-request-throttle.js'
 
 export type SourceLocatorOptions = {
   enabled?: boolean
@@ -69,6 +70,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
     attribute: config.attribute,
     theme: config.theme,
   }
+  const shouldOpen = createOpenRequestThrottle()
 
   return {
     name: 'source-locator',
@@ -126,7 +128,9 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
             res.end('file not found')
             return
           }
-          openInEditor({ file: resolvedFile, line, col }, ide, config.ides)
+          if (shouldOpen(`${resolvedFile}:${line}:${col}`)) {
+            openInEditor({ file: resolvedFile, line, col }, ide, config.ides)
+          }
           res.writeHead(200, { 'Content-Type': 'text/plain' })
           res.end('ok')
         } catch {
