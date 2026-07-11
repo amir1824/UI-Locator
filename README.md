@@ -166,6 +166,42 @@ LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/co
 REACT_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 ```
 
+## Troubleshooting
+
+### Every click opens another IDE window instead of reusing one
+
+With `ides: ['auto']` (the default), the plugin re-detects your running editor via
+`ps` on every single click and asks it to reuse the last active window (`-r -g`).
+That detection — and the reuse handshake — only works reliably when the dev
+server and the editor GUI are on the **same machine/session**:
+
+- Pin an explicit editor instead of `auto` to skip the per-click process guessing:
+  ```typescript
+  sourceLocator({ ides: ['vscode'] }) // or ['cursor'], ['webstorm']
+  ```
+- If the dev server runs inside a container, VM, WSL, or a remote/cloud
+  environment while your IDE window is on a different host (e.g. connected via
+  Remote-SSH, Dev Containers, or a cloud agent), the `code`/`cursor` CLI on that
+  box talks to a *remote* CLI shim. That shim can only "reuse" a window it has
+  an active IPC socket for — a new/duplicate remote session, or a stale socket,
+  makes every request open a fresh window. This is a limitation of the editor's
+  remote CLI, not something this plugin can override. Confirm with `which code`
+  (or `cursor`) on the same machine that runs `npm run dev`.
+- Set `LAUNCH_EDITOR` (or `REACT_EDITOR`) to the exact CLI you want used, so
+  there's no guessing at all.
+- Rapid double-clicks are already deduplicated (client-side in-flight guard,
+  server-side per-location throttle), so a single click can't itself spawn two
+  competing editor processes.
+
+### Picking an element inside an open dialog closes the dialog
+
+Fixed — pick mode now intercepts the whole `pointerdown`/`mousedown`/`click`
+sequence at the earliest possible point (capture phase on `window`) and stops
+it from reaching the page underneath. Previously it only intercepted the final
+`click`, so a dialog's own "close on outside `mousedown`" listener (used by most
+dialog/modal libraries) ran first and unmounted the dialog before pick mode ever
+saw the interaction. Update to the latest version to get this fix.
+
 ## Adding a New IDE
 
 1. Extend `LocatorIde` and `IDE_ORDER` in `src/shared/index.ts`
