@@ -1,6 +1,7 @@
 import { DEFAULT_IDE, parseSourceLocation, resolveTheme } from '../shared/index.js'
 import type { LocatorThemeInput } from '../shared/index.js'
 import { createLocatorOverlayUi } from './overlay.js'
+import { UI_IDS } from './overlay-styles.js'
 
 export type ClientConfig = {
   endpoint: string
@@ -8,32 +9,52 @@ export type ClientConfig = {
   theme?: LocatorThemeInput
 }
 
-function getSourceEl(target: Element | null, attribute: string, host: Element): HTMLElement | null {
+function getSourceElement(
+  target: Element | null,
+  attribute: string,
+  host: Element,
+): HTMLElement | null {
   if (!target || host.contains(target) || target === host) return null
-  const el = target.closest(`[${attribute}]`)
-  return el instanceof HTMLElement ? el : null
+  const matched = target.closest(`[${attribute}]`)
+  return matched instanceof HTMLElement ? matched : null
 }
 
 async function openSourceInEditor(source: string, config: ClientConfig): Promise<void> {
-  const loc = parseSourceLocation(source)
+  const sourceLocation = parseSourceLocation(source)
   // Client always sends ide=auto; server resolveIde + plugin ides config pick the editor.
   const params = new URLSearchParams({
-    file: loc.file,
-    line: loc.line,
-    col: loc.col,
+    file: sourceLocation.file,
+    line: sourceLocation.line,
+    col: sourceLocation.col,
     ide: DEFAULT_IDE,
   })
   await fetch(`${config.endpoint}?${params.toString()}`)
 }
 
-function readComponentSource(el: HTMLElement, attribute: string): string | undefined {
-  return el.getAttribute(attribute) ?? undefined
+function readComponentSource(element: HTMLElement, attribute: string): string | undefined {
+  return element.getAttribute(attribute) ?? undefined
+}
+
+function stopEvent(event: Event): void {
+  event.preventDefault()
+  event.stopPropagation()
+  event.stopImmediatePropagation()
+}
+
+function pathIncludesHost(event: Event, host: Element): boolean {
+  return event.composedPath().includes(host)
+}
+
+function pathIncludesBadge(event: Event): boolean {
+  return event.composedPath().some(
+    (node) => node instanceof Element && node.id === UI_IDS.badge,
+  )
 }
 
 export function startPickController(root: ShadowRoot, host: Element, config: ClientConfig): () => void {
   let pickMode = false
   let componentSource: string | undefined
-  const ui = createLocatorOverlayUi(root, () => setPickMode(!pickMode), resolveTheme(config.theme))
+  const ui = createLocatorOverlayUi(root, resolveTheme(config.theme))
 
   function setPickMode(active: boolean) {
     if (active) document.addEventListener('mousemove', onMouseMove)
@@ -43,53 +64,75 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
     if (!active) componentSource = undefined
   }
 
-  const syncSource = (el: HTMLElement) => {
-    if (el !== ui.getActiveEl()) componentSource = readComponentSource(el, config.attribute)
+  const syncSource = (element: HTMLElement) => {
+    if (element !== ui.getActiveEl()) {
+      componentSource = readComponentSource(element, config.attribute)
+    }
   }
 
   const updateHover = (target: Element | null, x: number, y: number) => {
-    const el = getSourceEl(target, config.attribute, host)
-    if (!el) {
+    const element = getSourceElement(target, config.attribute, host)
+    if (!element) {
       ui.removeTooltip()
       return
     }
-    syncSource(el)
-    ui.showSourceTooltip(el, componentSource, x, y)
+    syncSource(element)
+    ui.showSourceTooltip(element, componentSource, x, y)
   }
 
-  const onMouseMove = (e: MouseEvent) => {
-    updateHover(e.target as Element, e.clientX, e.clientY)
+  const onMouseMove = (event: MouseEvent) => {
+    updateHover(event.target as Element, event.clientX, event.clientY)
   }
 
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && pickMode) setPickMode(false)
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !pickMode) return
+    stopEvent(event)
+    setPickMode(false)
   }
 
-  const onClick = async (e: MouseEvent) => {
-    if (!pickMode || host.contains(e.target as Element)) return
-    e.preventDefault()
-    e.stopPropagation()
+  const onPointerDown = (event: Event) => {
+    if (pathIncludesHost(event, host)) {
+      stopEvent(event)
+      return
+    }
+    if (!pickMode) return
+    stopEvent(event)
+  }
 
-    const el = getSourceEl(e.target as Element, config.attribute, host)
-    if (!el) return
-    syncSource(el)
+  const onClick = async (event: MouseEvent) => {
+    if (pathIncludesHost(event, host)) {
+      stopEvent(event)
+      if (pathIncludesBadge(event)) setPickMode(!pickMode)
+      return
+    }
+    if (!pickMode) return
+    stopEvent(event)
+
+    const element = getSourceElement(event.target as Element, config.attribute, host)
+    if (!element) return
+    syncSource(element)
     if (!componentSource) {
       ui.flashMessage('No source for this element')
       return
     }
 
     await openSourceInEditor(componentSource, config)
-    ui.showSourceTooltip(el, componentSource, e.clientX, e.clientY)
+    ui.showSourceTooltip(element, componentSource, event.clientX, event.clientY)
   }
 
-  document.addEventListener('keydown', onKeyDown)
-  document.addEventListener('click', onClick, true)
+  // window capture runs before document capture dismissers (Radix/MUI).
+  window.addEventListener('keydown', onKeyDown, true)
+  window.addEventListener('pointerdown', onPointerDown, true)
+  window.addEventListener('mousedown', onPointerDown, true)
+  window.addEventListener('click', onClick, true)
   ui.mountBadge()
 
   return () => {
     setPickMode(false)
-    document.removeEventListener('keydown', onKeyDown)
-    document.removeEventListener('click', onClick, true)
+    window.removeEventListener('keydown', onKeyDown, true)
+    window.removeEventListener('pointerdown', onPointerDown, true)
+    window.removeEventListener('mousedown', onPointerDown, true)
+    window.removeEventListener('click', onClick, true)
     ui.dispose()
   }
 }

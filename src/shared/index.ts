@@ -38,6 +38,6 @@ export function parseSourceLocation(raw: string): SourceLocation {
   return { file: parts.join(':'), line, col }
 }
 
-export function formatSourceLocation(loc: SourceLocation): string {
-  return `${loc.file}:${loc.line}:${loc.col}`
+export function formatSourceLocation(location: SourceLocation): string {
+  return `${location.file}:${location.line}:${location.col}`
 }

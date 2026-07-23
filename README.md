@@ -9,6 +9,7 @@ Dev-only tool for jumping from UI elements in the browser to source files in you
 │   ├── vite/      # Vite plugin, Babel plugin, editor integration
 │   ├── client/    # Browser overlay (pick mode, tooltip, highlight)
 │   └── shared/    # Types, constants, theme utilities
+├── playground/    # Local React demo for pick mode + dialog shield
 ├── tests/         # Mirrors src/ layout
 ├── dist/          # Build output (published to npm)
 └── .github/       # CI workflows
@@ -21,6 +22,16 @@ npm install -D vite-plugin-source-locator
 ```
 
 You also need `@vitejs/plugin-react` (or another setup that runs the Babel plugin in dev).
+
+## Playground
+
+Local demo app (builds the plugin, then starts Vite on port `5177`):
+
+```bash
+npm run playground
+```
+
+Use the **Locator** badge to pick elements. Open the dialog and pick while it is open — outside-click should not close it.
 
 ## Usage
 
@@ -131,11 +142,12 @@ IDE opening works on **macOS, Windows, and Linux** via [`launch-editor`](https:/
 
 ### Auto detection (default)
 
-By default, `ides` includes `'auto'` as the first entry. In `auto` mode, the plugin detects your open IDE:
+By default, `ides` includes `'auto'` as the first entry. In `auto` mode, the plugin picks an editor in this order:
 
-1. `LAUNCH_EDITOR` / `REACT_EDITOR` environment variable
-2. Running editor process (VS Code, Cursor, WebStorm, etc.)
-3. `VISUAL` / `EDITOR` environment variable
+1. `LAUNCH_EDITOR` environment variable (explicit override)
+2. IDE-injected env (Cursor / VS Code process env when Vite was started from that IDE)
+3. The IDE that launched this Vite process (parent-process walk)
+4. Machine-wide detection via [`launch-editor`](https://github.com/vitejs/launch-editor) (running GUI editors / `VISUAL` — terminal editors like `vim` are ignored)
 
 The plugin resolves known app-bundle CLI paths automatically (e.g. VS Code on macOS). If detection still fails, install the editor shell command or set `LAUNCH_EDITOR` to the full CLI path.
 
@@ -163,7 +175,6 @@ If opening fails with `ENOENT`, install the shell command in your editor (VS Cod
 
 ```
 LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
-REACT_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
 ```
 
 ## Adding a New IDE

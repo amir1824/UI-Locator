@@ -11,11 +11,7 @@ const FLASH_DURATION_MS = 1500
 const FLASH_HORIZONTAL_OFFSET = 80
 const FLASH_BOTTOM_OFFSET = 80
 
-export function createLocatorOverlayUi(
-  root: ShadowRoot,
-  onTogglePick: () => void,
-  theme: LocatorTheme,
-) {
+export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
   let activeEl: Element | null = null
   let flashTimeout: ReturnType<typeof setTimeout> | null = null
   let badgeEl: HTMLButtonElement | null = null
@@ -106,10 +102,6 @@ export function createLocatorOverlayUi(
     badgeEl.type = 'button'
     badgeEl.textContent = BADGE_LABEL_IDLE
     Object.assign(badgeEl.style, LAYOUT.badge)
-    badgeEl.addEventListener('click', (event) => {
-      event.stopPropagation()
-      onTogglePick()
-    })
     root.appendChild(badgeEl)
     applyBadgeColors(false)
   }
