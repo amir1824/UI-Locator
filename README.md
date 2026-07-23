@@ -63,6 +63,10 @@ No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev
 | Click | Open TSX source |
 | Esc | Cancel pick |
 
+### Dialog-safe picking
+
+While pick mode is on, pointer events are stopped at the `window` capture phase so overlays from Radix, MUI, and similar libraries do not treat the pick click as an outside dismiss. You can open a modal, enable Locator, and jump to source without the dialog closing.
+
 ## Exports
 
 | Subpath | Purpose |
@@ -188,6 +192,18 @@ LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/co
 
 - Dev only — no production impact
 - JSX/TSX only for `data-source` injection
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, scripts, PR workflow, and how to add a new IDE.
+
+## Changelog
+
+### 1.4.0
+
+- Dialog-safe pick mode (capture-phase shield so modals stay open while picking)
+- Local React playground (`npm run playground`)
+- More reliable macOS / IDE CLI opening and parent-process detection
 
 ## License
 
