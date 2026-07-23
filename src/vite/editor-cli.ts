@@ -110,9 +110,9 @@ export function resolveEditorFromEnv(): string | null {
     .join('\n')
     .toLowerCase()
   if (hints.includes('cursor')) return resolveCliPath('cursor')
-  if (hints.includes('visual studio code') || process.env.VSCODE_PID) {
-    return resolveCliPath('code')
-  }
+  // Do not treat VSCODE_PID alone as VS Code — Cursor and other forks set it too,
+  // and a false `code` hit would skip the parent-process walk.
+  if (hints.includes('visual studio code')) return resolveCliPath('code')
   return null
 }
 

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  spawn: vi.fn(() => ({ unref: vi.fn() })),
+  spawn: vi.fn(() => ({ on: vi.fn(), unref: vi.fn() })),
   resolveOwningEditor: vi.fn(),
   resolveAutoEditor: vi.fn(),
   resolveCliPath: vi.fn((command: string) => command),
@@ -31,7 +31,7 @@ describe('openInEditor', () => {
 
   beforeEach(() => {
     mocks.spawn.mockClear()
-    mocks.spawn.mockReturnValue({ unref: vi.fn() })
+    mocks.spawn.mockReturnValue({ on: vi.fn(), unref: vi.fn() })
     mocks.resolveOwningEditor.mockReset()
     mocks.resolveAutoEditor.mockReset()
     mocks.resolveCliPath.mockImplementation((command: string) => command)
@@ -54,6 +54,7 @@ describe('openInEditor', () => {
       { stdio: 'ignore', env: expect.any(Object) },
     )
     expect(mocks.spawn.mock.calls[0][2]).not.toHaveProperty('detached')
+    expect(mocks.spawn.mock.results[0].value.on).toHaveBeenCalledWith('error', expect.any(Function))
   })
 
   it('opens resolved editor when ide is auto', () => {
@@ -69,13 +70,16 @@ describe('openInEditor', () => {
     )
   })
 
-  it('does nothing when no editor is resolved', () => {
+  it('warns and skips spawn when no editor is resolved', () => {
+    const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     mocks.resolveOwningEditor.mockReturnValue(null)
     mocks.resolveAutoEditor.mockReturnValue(null)
 
     openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
 
     expect(mocks.spawn).not.toHaveBeenCalled()
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('no editor resolved'))
+    write.mockRestore()
   })
 
   it('spawns cursor with reuse and goto flags', () => {
@@ -115,6 +119,21 @@ describe('openInEditor', () => {
       ['--line', '4', '--column', '2', '/app/src/App.tsx'],
       { stdio: 'ignore', env: expect.any(Object) },
     )
+  })
+
+  it('scrubs ELECTRON_RUN_AS_NODE from spawn env but keeps DISPLAY', () => {
+    process.env.ELECTRON_RUN_AS_NODE = '1'
+    process.env.DISPLAY = ':0'
+    mocks.resolveOwningEditor.mockReturnValue(CURSOR_CLI)
+
+    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+
+    const options = mocks.spawn.mock.calls[0][2] as { env: NodeJS.ProcessEnv }
+    expect(options.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+    expect(options.env.DISPLAY).toBe(':0')
+
+    delete process.env.ELECTRON_RUN_AS_NODE
+    delete process.env.DISPLAY
   })
 
   it('on macOS opens Cursor via URL scheme (no second process)', () => {

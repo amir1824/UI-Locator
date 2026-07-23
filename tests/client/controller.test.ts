@@ -53,7 +53,9 @@ describe('startPickController', () => {
     const pointer = composedPointerDown()
     badge.dispatchEvent(pointer)
 
-    expect(pointer.defaultPrevented).toBe(true)
+    // Propagation blocked so dialog dismissers never see the event; do not
+    // preventDefault on pointerdown — that would suppress the synthesized click.
+    expect(pointer.defaultPrevented).toBe(false)
     expect(dismiss).not.toHaveBeenCalled()
 
     badge.dispatchEvent(composedClick())
@@ -89,7 +91,7 @@ describe('startPickController', () => {
 
     const pointer = composedPointerDown()
     button.dispatchEvent(pointer)
-    expect(pointer.defaultPrevented).toBe(true)
+    expect(pointer.defaultPrevented).toBe(false)
     expect(pagePointer).not.toHaveBeenCalled()
 
     const click = composedClick()
@@ -125,7 +127,7 @@ describe('startPickController', () => {
     const pointer = composedPointerDown()
     button.dispatchEvent(pointer)
 
-    expect(pointer.defaultPrevented).toBe(true)
+    expect(pointer.defaultPrevented).toBe(false)
     expect(dismiss).not.toHaveBeenCalled()
 
     dispose()

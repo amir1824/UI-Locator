@@ -35,10 +35,15 @@ function readComponentSource(element: HTMLElement, attribute: string): string | 
   return element.getAttribute(attribute) ?? undefined
 }
 
-function stopEvent(event: Event): void {
-  event.preventDefault()
+/** Block page/dialog listeners without cancelling the browser's synthesized click. */
+function blockPropagation(event: Event): void {
   event.stopPropagation()
   event.stopImmediatePropagation()
+}
+
+function stopEvent(event: Event): void {
+  event.preventDefault()
+  blockPropagation(event)
 }
 
 function pathIncludesHost(event: Event, host: Element): boolean {
@@ -57,8 +62,8 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
   const ui = createLocatorOverlayUi(root, resolveTheme(config.theme))
 
   function setPickMode(active: boolean) {
+    document.removeEventListener('mousemove', onMouseMove)
     if (active) document.addEventListener('mousemove', onMouseMove)
-    else document.removeEventListener('mousemove', onMouseMove)
     pickMode = active
     ui.setPickActive(active)
     if (!active) componentSource = undefined
@@ -92,11 +97,11 @@ export function startPickController(root: ShadowRoot, host: Element, config: Cli
 
   const onPointerDown = (event: Event) => {
     if (pathIncludesHost(event, host)) {
-      stopEvent(event)
+      blockPropagation(event)
       return
     }
     if (!pickMode) return
-    stopEvent(event)
+    blockPropagation(event)
   }
 
   const onClick = async (event: MouseEvent) => {

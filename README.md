@@ -138,16 +138,18 @@ initSourceLocator({
 
 ## IDE Setup
 
-IDE opening works on **macOS, Windows, and Linux** via [`launch-editor`](https://github.com/vitejs/launch-editor).
+On **macOS**, Cursor / VS Code open via `cursor://file/…` / `vscode://file/…` (Launch Services → existing window, no second Dock icon). WebStorm and non-macOS platforms spawn the editor CLI with `-r -g` (or WebStorm `--line` / `--column`).
+
+Editor discovery still uses [`launch-editor`'s guess helper](https://github.com/vitejs/launch-editor) as a last resort.
 
 ### Auto detection (default)
 
 By default, `ides` includes `'auto'` as the first entry. In `auto` mode, the plugin picks an editor in this order:
 
 1. `LAUNCH_EDITOR` environment variable (explicit override)
-2. IDE-injected env (Cursor / VS Code process env when Vite was started from that IDE)
+2. IDE-injected env (Cursor markers / VS Code NLS paths — not bare `VSCODE_PID`, which forks also set)
 3. The IDE that launched this Vite process (parent-process walk)
-4. Machine-wide detection via [`launch-editor`](https://github.com/vitejs/launch-editor) (running GUI editors / `VISUAL` — terminal editors like `vim` are ignored)
+4. Machine-wide detection via [`launch-editor` guess](https://github.com/vitejs/launch-editor) (running GUI editors / `VISUAL` — terminal editors like `vim` are ignored)
 
 The plugin resolves known app-bundle CLI paths automatically (e.g. VS Code on macOS). If detection still fails, install the editor shell command or set `LAUNCH_EDITOR` to the full CLI path.
 

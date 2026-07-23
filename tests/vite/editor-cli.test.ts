@@ -19,6 +19,7 @@ import {
   matchIdeLaunchName,
   resolveAutoEditor,
   resolveCliPath,
+  resolveEditorFromEnv,
   resolveOwningEditor,
   toLaunchEditorName,
 } from '../../src/vite/editor-cli.js'
@@ -138,6 +139,20 @@ describe('resolveOwningEditor', () => {
     mocks.existsSync.mockImplementation((path: string) => path === CURSOR_CLI)
 
     expect(resolveOwningEditor()).toBe(CURSOR_CLI)
+  })
+
+  it('does not treat VSCODE_PID alone as VS Code', () => {
+    process.env.VSCODE_PID = '12345'
+    expect(resolveEditorFromEnv()).toBeNull()
+  })
+
+  it('detects VS Code from NLS path hint', () => {
+    process.env.VSCODE_NLS_CONFIG = JSON.stringify({
+      defaultMessagesFile: '/Applications/Visual Studio Code.app/nls.messages.json',
+    })
+    mocks.existsSync.mockImplementation((path: string) => path === VSCODE_CLI)
+
+    expect(resolveEditorFromEnv()).toBe(VSCODE_CLI)
   })
 })
 
