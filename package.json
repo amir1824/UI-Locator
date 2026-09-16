@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-source-locator",
-  "version": "1.4.0",
-  "description": "Dev-only Vite plugin: click UI elements to jump to source in your IDE",
+  "version": "1.5.0",
+  "description": "Dev-only Vite plugin: resolve UI elements to source context for IDEs and coding agents",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -68,6 +68,8 @@
     "vite-plugin",
     "source-locator",
     "devtools",
+    "ai",
+    "agent",
     "cursor",
     "vscode"
   ],

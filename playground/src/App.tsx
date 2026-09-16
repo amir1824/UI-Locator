@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { expandedModifierLabel } from '../../src/client/platform.js'
 import { Card } from './Card'
 import { ConfirmDialog } from './ConfirmDialog'
+
+const expandedChord = `${expandedModifierLabel()}+Click`
 
 export function App() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -12,8 +15,10 @@ export function App() {
         <p className="brand">UI Locator</p>
         <h1>Playground</h1>
         <p className="lede">
-          Click the <strong>Locator</strong> badge → hover → click an element to jump to source.
-          Open the dialog and try picking through it — it should stay open.
+          Click the <strong>Locator</strong> badge → hover → click to open source,{' '}
+          <strong>Shift+Click</strong> for compact AI context, or{' '}
+          <strong>{expandedChord}</strong> for expanded (styles / box / path). Open the
+          dialog and try picking through it — it should stay open.
         </p>
       </header>
 

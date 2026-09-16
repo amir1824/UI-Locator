@@ -64,7 +64,12 @@ function resolveFilePath(file: string, root: string): string {
 
 function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   const config = resolveOptions(options)
-  const clientConfig = {
+  const clientConfig: {
+    endpoint: string
+    attribute: string
+    theme?: LocatorThemeInput
+    root?: string
+  } = {
     endpoint: config.endpoint,
     attribute: config.attribute,
     theme: config.theme,
@@ -73,6 +78,10 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   return {
     name: 'source-locator',
     apply: 'serve',
+
+    configResolved(resolved) {
+      clientConfig.root = resolved.root
+    },
 
     api: {
       reactBabel(babelConfig: ReactBabelConfig) {

@@ -1,13 +1,18 @@
 # vite-plugin-source-locator
 
-Dev-only tool for jumping from UI elements in the browser to source files in your IDE. Works as a drop-in Vite plugin for React apps.
+Dev-only Vite plugin that resolves any rendered UI element back to its source and exposes that context to coding agents (or opens the file in your IDE). Drop-in for React apps.
+
+**UI → structured source context → any agent** — not locked to a single editor.
 
 ## Project Structure
 
 ```
 ├── src/
 │   ├── vite/      # Vite plugin, Babel plugin, editor integration
-│   ├── client/    # Browser overlay (pick mode, tooltip, highlight)
+│   ├── client/    # Browser overlay (pick / context / overlay)
+│   │   ├── pick/      # controller, actions, events, select-bus
+│   │   ├── context/   # LocatorContext, path, snapshot, prompts
+│   │   └── overlay/   # badge, tooltip, styles
 │   └── shared/    # Types, constants, theme utilities
 ├── playground/    # Local React demo for pick mode + dialog shield
 ├── tests/         # Mirrors src/ layout
@@ -56,11 +61,14 @@ No `main.tsx` wiring required. The plugin auto-injects the client overlay in dev
 1. Click the badge (bottom-right): **Locator**
 2. Hover elements — blue highlight + file paths in tooltip
 3. Click to open the TSX source file in your IDE
-4. **Esc** — cancel pick mode
+4. Shift+Click to copy a compact AI prompt; Alt/Option+Shift+Click for expanded (path / styles / box). On Mac the key is **Option** (⌥); on Windows/Linux it is **Alt**.
+5. **Esc** — cancel pick mode
 
 | Shortcut | Action |
 |----------|--------|
 | Click | Open TSX source |
+| Shift+Click | Copy compact AI context |
+| Alt/Option+Shift+Click | Copy expanded AI context |
 | Esc | Cancel pick |
 
 ### Dialog-safe picking
@@ -72,7 +80,7 @@ While pick mode is on, pointer events are stopped at the `window` capture phase 
 | Subpath | Purpose |
 |---------|---------|
 | `vite-plugin-source-locator/vite` | Vite plugin + `sourceLocator.babel()` |
-| `vite-plugin-source-locator/client` | Manual `initSourceLocator()` if auto-inject disabled |
+| `vite-plugin-source-locator/client` | Overlay init, `inspect` / `onSelect`, context helpers |
 | `vite-plugin-source-locator/shared` | Types, constants, parse/format utilities |
 
 ## Options
@@ -133,10 +141,38 @@ initSourceLocator({
 ```typescript
 import { initSourceLocator } from 'vite-plugin-source-locator/client'
 
-initSourceLocator({
+const locator = initSourceLocator({
   endpoint: '/__open-in-editor',
   attribute: 'data-source',
   theme: 'blue',
+})
+
+// Optional: hook selections for any agent / MCP adapter
+locator?.onSelect((ctx, { action }) => {
+  console.log(action, ctx.source.file, ctx.source.line)
+})
+
+// Optional: inspect a DOM node programmatically (compact by default)
+const context = locator?.inspect(document.querySelector('button')!)
+
+// Expanded context (path, styles, box) for richer agent prompts
+const expanded = locator?.inspect(document.querySelector('button')!, {
+  detail: 'expanded',
+})
+```
+
+Helpers for building / copying context without the overlay:
+
+```typescript
+import {
+  getElementContext,
+  contextToPrompt,
+  copyContextForAI,
+} from 'vite-plugin-source-locator/client'
+
+const ctx = getElementContext(el, {
+  attribute: 'data-source',
+  detail: 'expanded',
 })
 ```
 
@@ -192,12 +228,23 @@ LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/co
 
 - Dev only — no production impact
 - JSX/TSX only for `data-source` injection
+- Expanded CSS path stops at mount ids `root` / `app` (common React mounts); other app shells keep walking to `body`
+- Expanded context does not include screenshots or React Fiber props
 
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, scripts, PR workflow, and how to add a new IDE.
 
 ## Changelog
+
+### 1.5.0
+
+- UI context SDK: resolve UI → structured source context for any agent
+- Shift+Click compact prompt; Alt/Option+Shift+Click expanded (path / styles / box)
+- Public `inspect` / `onSelect` API plus `getElementContext` / `contextToPrompt`
+- Client layout: `pick/` · `context/` · `overlay/`
+- OS-aware shortcut labels (Option on Mac, Alt on Windows/Linux)
+- `onSelect('open')` fires only after a successful editor open
 
 ### 1.4.0
 

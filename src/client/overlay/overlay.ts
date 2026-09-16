@@ -1,5 +1,5 @@
-import type { LocatorTheme } from '../shared/index.js'
-import { LAYOUT, UI_IDS } from './overlay-styles.js'
+import type { LocatorTheme } from '../../shared/index.js'
+import { LAYOUT, UI_IDS } from './styles.js'
 import { buildTooltipText } from './tooltip-text.js'
 
 const BADGE_LABEL_IDLE = 'Locator'
@@ -12,7 +12,6 @@ const FLASH_HORIZONTAL_OFFSET = 80
 const FLASH_BOTTOM_OFFSET = 80
 
 export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
-  let activeEl: Element | null = null
   let flashTimeout: ReturnType<typeof setTimeout> | null = null
   let badgeEl: HTMLButtonElement | null = null
 
@@ -20,7 +19,6 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
 
   const removeTooltip = () => {
     root.getElementById(UI_IDS.tooltip)?.remove()
-    activeEl = null
     removeHighlight()
   }
 
@@ -54,7 +52,6 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
       border: `1px solid ${theme.tooltipBorder}`,
     })
     root.appendChild(tooltip)
-    activeEl = el
     if (el) showHighlight(el)
   }
 
@@ -113,7 +110,6 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
     flashMessage,
     removeTooltip,
     dispose,
-    getActiveEl: () => activeEl,
   }
 }
 
