@@ -23,7 +23,18 @@ Requires Node.js 18+.
 | `npm run playground` | Build plugin + open the React demo (`http://localhost:5177`) |
 | `npm run clean` | Remove `dist/` |
 
-`prepublishOnly` runs lint → build → test before every publish.
+`prepublishOnly` runs lint → typecheck → build → test before every publish.
+
+## Release (npm)
+
+Publishing is manual via GitHub Actions → **Release** (`publish.yml`): Trusted Publisher OIDC to npm + GitHub Release for `v{version}` from `package.json`.
+
+On npmjs.com → package → **Trusted Publisher**, set:
+
+- Organization or user: `amir1824`
+- Repository: `UI-Locator`
+- Workflow filename: `publish.yml`
+- Environment name: (blank)
 
 ## Project layout
 
