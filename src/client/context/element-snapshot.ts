@@ -13,6 +13,8 @@ const PROMPT_ATTRS = new Set([
   'aria-label',
 ])
 
+const SENSITIVE_INPUT_TYPES = new Set(['password', 'hidden'])
+
 const STYLE_KEYS = [
   'color',
   'backgroundColor',
@@ -28,14 +30,23 @@ function escapeAttr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 }
 
+function shouldOmitValue(element: HTMLElement): boolean {
+  if (element.tagName !== 'INPUT') return false
+  const typeAttr = element.getAttribute('type')
+  const type = (typeAttr ?? (element as HTMLInputElement).type).toLowerCase()
+  return SENSITIVE_INPUT_TYPES.has(type)
+}
+
 export function readPromptAttributes(
   element: HTMLElement,
   sourceAttr: string,
 ): Record<string, string> {
   const attributes: Record<string, string> = {}
+  const omitValue = shouldOmitValue(element)
   for (const attr of Array.from(element.attributes)) {
     if (attr.name === sourceAttr) continue
     if (!PROMPT_ATTRS.has(attr.name) && !attr.name.startsWith('aria-')) continue
+    if (omitValue && attr.name === 'value') continue
     attributes[attr.name] = attr.value
   }
   return attributes

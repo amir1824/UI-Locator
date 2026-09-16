@@ -73,6 +73,37 @@ describe('compactElementHtml', () => {
   })
 })
 
+describe('getElementContext sensitive values', () => {
+  it('omits password input values from the AI prompt snapshot', () => {
+    const input = document.createElement('input')
+    input.type = 'password'
+    input.setAttribute('value', 'hunter2')
+    input.setAttribute('name', 'secret')
+    input.setAttribute('data-source', '/app/src/Login.tsx:1:1')
+    document.body.appendChild(input)
+
+    const context = getElementContext(input, { root: '/app' })
+
+    expect(context?.element.attributes).toEqual({ type: 'password', name: 'secret' })
+    expect(context?.element.html).toBe('<input type="password" name="secret">')
+    expect(contextToPrompt(context!)).not.toContain('hunter2')
+  })
+
+  it('omits hidden input values that may hold CSRF tokens', () => {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.setAttribute('value', 'csrf-token-abc')
+    input.setAttribute('name', '_csrf')
+    input.setAttribute('data-source', '/app/src/Form.tsx:1:1')
+    document.body.appendChild(input)
+
+    const context = getElementContext(input, { root: '/app' })
+
+    expect(context?.element.attributes).toEqual({ type: 'hidden', name: '_csrf' })
+    expect(contextToPrompt(context!)).not.toContain('csrf-token-abc')
+  })
+})
+
 describe('getElementContext', () => {
   it('builds compact context from data-source and DOM', () => {
     const button = document.createElement('button')

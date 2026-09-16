@@ -32,4 +32,16 @@ describe('babelPluginAddSourceAttr', () => {
     })
     expect(result?.code).not.toContain('data-source')
   })
+
+  it('does not add data-source to Fragment (React rejects unknown Fragment props)', () => {
+    const result = transform('<Fragment key="x"><div /></Fragment>')
+    expect(result?.code).not.toMatch(/<Fragment[^>]*data-source/)
+    expect(result?.code).toMatch(/<div data-source/)
+  })
+
+  it('does not add data-source to React.Fragment', () => {
+    const result = transform('<React.Fragment><div /></React.Fragment>')
+    expect(result?.code).not.toMatch(/<React\.Fragment[^>]*data-source/)
+    expect(result?.code).toMatch(/<div data-source/)
+  })
 })

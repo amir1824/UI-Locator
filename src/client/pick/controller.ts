@@ -14,6 +14,7 @@ import {
   pathIncludesHost,
   stopEvent,
 } from './events.js'
+import { createHoverTracker } from './hover-tracker.js'
 import { createSelectBus } from './select-bus.js'
 import type { SelectHandler } from './select-bus.js'
 
@@ -42,13 +43,6 @@ export function startPickController(
   const bus = createSelectBus()
   const ui = createLocatorOverlayUi(root, resolveTheme(config.theme))
 
-  function setPickMode(active: boolean) {
-    document.removeEventListener('mousemove', onMouseMove)
-    if (active) document.addEventListener('mousemove', onMouseMove)
-    pickMode = active
-    ui.setPickActive(active)
-  }
-
   const updateHover = (target: Element | null, x: number, y: number) => {
     const element = getSourceElement(target, config.attribute, host)
     if (!element) {
@@ -63,8 +57,19 @@ export function startPickController(
     )
   }
 
-  const onMouseMove = (event: MouseEvent) => {
-    updateHover(event.target as Element, event.clientX, event.clientY)
+  const hover = createHoverTracker(updateHover)
+
+  function setPickMode(active: boolean) {
+    document.removeEventListener('mousemove', hover.onMouseMove)
+    if (!active) {
+      hover.cancel()
+      pickMode = false
+      ui.setPickActive(false)
+      return
+    }
+    document.addEventListener('mousemove', hover.onMouseMove)
+    pickMode = true
+    ui.setPickActive(true)
   }
 
   const onKeyDown = (event: KeyboardEvent) => {

@@ -83,6 +83,16 @@ While pick mode is on, pointer events are stopped at the `window` capture phase 
 | `vite-plugin-source-locator/client` | Overlay init, `inspect` / `onSelect`, context helpers |
 | `vite-plugin-source-locator/shared` | Types, constants, parse/format utilities |
 
+### `sourceLocator.babel()`
+
+For setups that need the `data-source` attribute injected directly through `@vitejs/plugin-react`'s own babel config:
+
+```typescript
+react({ babel: sourceLocator.babel() })
+```
+
+This is fail-closed and development-only: it only registers the babel plugin when `process.env.NODE_ENV === 'development'`. Any other value (`production`, `staging`, unset, etc.) no-ops so absolute source paths never bake into shipped bundles. Vite's CLI sets `NODE_ENV` for both `vite`/`vite dev` and `vite build`; if you invoke Vite programmatically, set `NODE_ENV` to `'development'` only for local serve.
+
 ## Options
 
 ```typescript

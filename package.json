@@ -27,10 +27,11 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "playground": "npm run build && vite --config playground/vite.config.ts",
-    "prepublishOnly": "npm run lint && npm run build && npm run test"
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm run test"
   },
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0"
@@ -51,12 +52,12 @@
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9.39.4",
     "globals": "^15.15.0",
-    "happy-dom": "^15.11.7",
+    "happy-dom": "^20.14.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.62.0",
-    "vite": "^5.2.11",
+    "vite": "^6.4.3",
     "vitest": "^2.1.8"
   },
   "repository": {

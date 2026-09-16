@@ -57,6 +57,71 @@ describe('startPickController', () => {
     expect(root.getElementById(UI_IDS.tooltip)).toBeNull()
   })
 
+  it('restores the page cursor the app had set before picking, not always empty', () => {
+    document.body.style.cursor = 'zoom-in'
+    const { root, controller: api } = mountController()
+
+    const badge = root.getElementById(UI_IDS.badge)!
+    badge.dispatchEvent(composedClick())
+    expect(document.body.style.cursor).toBe('crosshair')
+
+    badge.dispatchEvent(composedClick())
+    expect(document.body.style.cursor).toBe('zoom-in')
+
+    api.dispose()
+    controller = undefined
+  })
+
+  it('does not wipe the app cursor on dispose when pick mode was never activated', () => {
+    document.body.style.cursor = 'wait'
+    const { controller: api } = mountController()
+
+    api.dispose()
+    controller = undefined
+
+    expect(document.body.style.cursor).toBe('wait')
+  })
+
+  it('coalesces rapid mousemove into a hover tooltip on the next frame', async () => {
+    const target = document.createElement('button')
+    target.setAttribute('data-source', '/src/App.tsx:1:1')
+    document.body.appendChild(target)
+
+    const { root, controller: api } = mountController()
+    const badge = root.getElementById(UI_IDS.badge)!
+    badge.dispatchEvent(composedClick())
+
+    target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1, clientY: 1 }))
+    target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 5, clientY: 5 }))
+    expect(root.getElementById(UI_IDS.tooltip)).toBeNull()
+
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    expect(root.getElementById(UI_IDS.tooltip)).not.toBeNull()
+
+    api.dispose()
+    controller = undefined
+    target.remove()
+  })
+
+  it('drops a pending hover frame on dispose instead of updating a torn-down overlay', async () => {
+    const target = document.createElement('button')
+    target.setAttribute('data-source', '/src/App.tsx:1:1')
+    document.body.appendChild(target)
+
+    const { root, controller: api } = mountController()
+    const badge = root.getElementById(UI_IDS.badge)!
+    badge.dispatchEvent(composedClick())
+
+    target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1, clientY: 1 }))
+    expect(() => api.dispose()).not.toThrow()
+    controller = undefined
+
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    expect(root.getElementById(UI_IDS.tooltip)).toBeNull()
+
+    target.remove()
+  })
+
   it('does not close capture-phase dialogs when clicking the badge', () => {
     const dismiss = vi.fn()
     document.addEventListener('pointerdown', dismiss, true)

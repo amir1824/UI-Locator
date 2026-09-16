@@ -1,12 +1,16 @@
-import type { IncomingMessage } from 'node:http'
 import { existsSync } from 'node:fs'
-import { isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 import { IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
 import type { LocatorIde, LocatorThemeInput } from '../shared/index.js'
 import { babelPluginAddSourceAttr } from './babel-plugin.js'
 import { openInEditor } from './editors.js'
+import {
+  isAllowedRequest,
+  isInsideRoot,
+  readQuery,
+  resolveFilePath,
+} from './open-endpoint.js'
 
 export type SourceLocatorOptions = {
   enabled?: boolean
@@ -32,36 +36,6 @@ function resolveOptions(options: SourceLocatorOptions = {}) {
   }
 }
 
-function readQuery(url: string, defaultIde: LocatorIde) {
-  const parsed = new URL(url, 'http://localhost')
-  return {
-    file: parsed.searchParams.get('file'),
-    line: parsed.searchParams.get('line') ?? '1',
-    col: parsed.searchParams.get('col') ?? '1',
-    ide: parsed.searchParams.get('ide') ?? defaultIde,
-  }
-}
-
-function isInsideRoot(resolved: string, root: string): boolean {
-  const rel = relative(root, resolved)
-  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
-}
-
-function isAllowedRequest(req: IncomingMessage): boolean {
-  const origin = req.headers.origin
-  const host = req.headers.host
-  if (origin && host && new URL(origin).host !== host) return false
-  if (req.headers['sec-fetch-site'] === 'cross-site') return false
-  return true
-}
-
-function resolveFilePath(file: string, root: string): string {
-  const viteDevMatch = file.match(/^\/src\/(.+)$/)
-  if (viteDevMatch) return resolve(root, 'src', viteDevMatch[1])
-  if (isAbsolute(file)) return resolve(file)
-  return resolve(root, file)
-}
-
 function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   const config = resolveOptions(options)
   const clientConfig: {
@@ -85,6 +59,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
     api: {
       reactBabel(babelConfig: ReactBabelConfig) {
+        if (!config.enabled) return
         const hasPlugin = babelConfig.plugins.some((p) => {
           if (Array.isArray(p)) {
             return p[0] === babelPluginAddSourceAttr
@@ -108,6 +83,7 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      if (!config.enabled) return
       server.middlewares.use(config.endpoint, (req, res) => {
         if (!isAllowedRequest(req)) {
           res.writeHead(403)
@@ -115,7 +91,17 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
           return
         }
 
-        const { file, line, col, ide } = readQuery(req.url ?? '', config.ides[0] ?? 'auto')
+        let file: string | null
+        let line: string
+        let col: string
+        let ide: string
+        try {
+          ;({ file, line, col, ide } = readQuery(req.url ?? '', config.ides[0] ?? 'auto'))
+        } catch {
+          res.writeHead(400)
+          res.end('invalid request')
+          return
+        }
 
         if (!file) {
           res.writeHead(400)
@@ -167,6 +153,15 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 }
 
 sourceLocator.babel = (options: SourceLocatorOptions = {}) => {
+  // Unlike the plugin above (`apply: 'serve'`), this helper is wired directly into
+  // react()'s babel config at vite.config authoring time, before Vite has resolved
+  // the command — so a production build would otherwise bake absolute source paths
+  // into every element's data-source attribute. Fail closed: only enable when
+  // NODE_ENV is explicitly 'development'. Vite's CLI sets that for `vite`/`vite
+  // dev`; staging, unset, or any other value must not inject paths into bundles.
+  if (options.enabled === false || process.env.NODE_ENV !== 'development') {
+    return { babel: { plugins: [] } }
+  }
   const attribute = options.attribute ?? SOURCE_ATTR
   return { babel: { plugins: [[babelPluginAddSourceAttr, { attribute }]] } }
 }

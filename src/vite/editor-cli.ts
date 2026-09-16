@@ -78,7 +78,7 @@ function readUnixProcess(pid: number): { ppid: number; comm: string } | null {
   }
 }
 
-function resolveEditorFromParentWalk(): string | null {
+function walkParentsForEditor(): string | null {
   // ponytail: Windows parent walk is brittle; fall back to machine-wide guess instead.
   if (process.platform === 'win32') return null
 
@@ -94,6 +94,14 @@ function resolveEditorFromParentWalk(): string | null {
     pid = info.ppid
   }
   return null
+}
+
+// The dev server's parent process never changes during its lifetime, but each call
+// shells out to `ps` up to MAX_PARENT_WALK times — costly to redo on every click.
+let parentWalkResult: string | null | undefined
+function resolveEditorFromParentWalk(): string | null {
+  if (parentWalkResult === undefined) parentWalkResult = walkParentsForEditor()
+  return parentWalkResult
 }
 
 /** IDE-injected env when Vite was started from an integrated terminal / agent. */

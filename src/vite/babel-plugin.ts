@@ -27,6 +27,14 @@ function createSourceAttr(
   return t.jsxAttribute(t.jsxIdentifier(attribute), t.stringLiteral(value))
 }
 
+// React.Fragment (and bare Fragment) reject unknown props at runtime; injecting
+// data-source there throws "Invalid prop `data-source` supplied to `React.Fragment`".
+function isFragmentElement(name: BabelTypes.JSXOpeningElement['name']): boolean {
+  if (name.type === 'JSXIdentifier') return name.name === 'Fragment'
+  if (name.type === 'JSXMemberExpression') return name.property.name === 'Fragment'
+  return false
+}
+
 export function babelPluginAddSourceAttr({ types: t }: Babel, opts: BabelOptions) {
   const attribute = opts.attribute
   return {
@@ -36,6 +44,7 @@ export function babelPluginAddSourceAttr({ types: t }: Babel, opts: BabelOptions
         const loc = path.node.loc
         const filename = state.file.opts.filename
         if (!loc || !filename) return
+        if (isFragmentElement(path.node.name)) return
         if (hasSourceAttr(t, path.node.attributes, attribute)) return
 
         // Babel columns are 0-indexed; editors expect 1-indexed columns.

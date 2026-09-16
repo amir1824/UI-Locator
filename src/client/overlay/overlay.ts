@@ -14,6 +14,7 @@ const FLASH_BOTTOM_OFFSET = 80
 export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
   let flashTimeout: ReturnType<typeof setTimeout> | null = null
   let badgeEl: HTMLButtonElement | null = null
+  let previousCursor: string | null = null
 
   const removeHighlight = () => root.getElementById(UI_IDS.highlight)?.remove()
 
@@ -80,11 +81,24 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
   }
 
   const setPickActive = (active: boolean) => {
-    document.body.style.cursor = active ? 'crosshair' : ''
+    if (!active) {
+      // Only restore when we actually swapped the cursor — dispose always
+      // deactivates pick mode, and writing '' would wipe an app cursor like `wait`.
+      if (previousCursor !== null) {
+        document.body.style.cursor = previousCursor
+        previousCursor = null
+      }
+      removeTooltip()
+      if (!badgeEl) return
+      badgeEl.textContent = BADGE_LABEL_IDLE
+      applyBadgeColors(false)
+      return
+    }
+    previousCursor = document.body.style.cursor
+    document.body.style.cursor = 'crosshair'
     if (!badgeEl) return
-    badgeEl.textContent = active ? BADGE_LABEL_PICKING : BADGE_LABEL_IDLE
-    applyBadgeColors(active)
-    if (!active) removeTooltip()
+    badgeEl.textContent = BADGE_LABEL_PICKING
+    applyBadgeColors(true)
   }
 
   const dispose = () => {

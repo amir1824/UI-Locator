@@ -48,7 +48,39 @@ function warn(message: string): void {
   process.stderr.write(`[source-locator] ${message}\n`)
 }
 
+// Node refuses to `spawn()` a .cmd/.bat directly without `shell: true` (CVE-2024-27980),
+// and .cmd is exactly what VS Code/Cursor's Windows CLI shim is. Match launch-editor's own
+// fix: build the command line ourselves and run it through cmd.exe, escaping shell
+// metacharacters (`escapeCmdArgs`/`doubleQuoteIfNeeded` mirror launch-editor's approach,
+// plus `%` → `%%` so env-var expansion can't rewrite the path).
+function escapeCmdArgs(value: string): string {
+  return value.replace(/%/g, '%%').replace(/([&|<>,;=^])/g, '^$1')
+}
+
+function doubleQuoteIfNeeded(value: string): string {
+  if (value.includes('^')) return `^"${value}^"`
+  if (value.includes(' ')) return `"${value}"`
+  return value
+}
+
+function runWindowsShell(command: string, args: string[], env?: NodeJS.ProcessEnv): void {
+  const launchCommand = [command, ...args.map(escapeCmdArgs)].map(doubleQuoteIfNeeded).join(' ')
+  // spawn + shell avoids exec's 1MB stdout/stderr buffer if the editor logs verbosely.
+  spawn(launchCommand, [], {
+    shell: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    ...(env ? { env } : {}),
+  }).on('error', (error) => {
+    warn(`failed to open editor: ${error.message}`)
+  })
+}
+
 function runSpawn(command: string, args: string[], options: SpawnOptions): void {
+  if (process.platform === 'win32') {
+    runWindowsShell(command, args, options.env)
+    return
+  }
   spawn(command, args, options).on('error', (error) => {
     warn(`failed to open editor: ${error.message}`)
   })

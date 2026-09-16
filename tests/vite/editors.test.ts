@@ -2,7 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  spawn: vi.fn(() => ({ on: vi.fn(), unref: vi.fn() })),
+  spawn: vi.fn<
+    (command: string, args?: string[], options?: Record<string, unknown>) => {
+      on: ReturnType<typeof vi.fn>
+      unref: ReturnType<typeof vi.fn>
+    }
+  >(),
   resolveOwningEditor: vi.fn(),
   resolveAutoEditor: vi.fn(),
   resolveCliPath: vi.fn((command: string) => command),
@@ -176,5 +181,57 @@ describe('openInEditor', () => {
       ['--line', '4', '--column', '2', '/app/src/App.tsx'],
       { stdio: 'ignore', env: expect.any(Object) },
     )
+  })
+
+  describe('on Windows', () => {
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+    })
+
+    it('runs a .cmd CLI through shell:true spawn (avoids Node EINVAL + exec buffers)', () => {
+      mocks.resolveOwningEditor.mockReturnValue('C:\\code.cmd')
+
+      openInEditor({ file: 'C:\\app\\src\\App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+
+      expect(mocks.spawn).toHaveBeenCalledWith(
+        'C:\\code.cmd -r -g C:\\app\\src\\App.tsx:10:5',
+        [],
+        expect.objectContaining({ shell: true, stdio: 'ignore', windowsHide: true }),
+      )
+    })
+
+    it('escapes shell metacharacters in the file path', () => {
+      mocks.resolveOwningEditor.mockReturnValue('C:\\code.cmd')
+
+      openInEditor({ file: 'C:\\app\\A & B\\App.tsx', line: '1', col: '1' }, 'auto', IDE_ORDER)
+
+      const [command] = mocks.spawn.mock.calls[0]
+      expect(command).toBe('C:\\code.cmd -r -g ^"C:\\app\\A ^& B\\App.tsx:1:1^"')
+    })
+
+    it('escapes % so cmd env-var expansion cannot rewrite the path', () => {
+      mocks.resolveOwningEditor.mockReturnValue('C:\\code.cmd')
+
+      openInEditor({ file: 'C:\\app\\%TEMP%\\App.tsx', line: '1', col: '1' }, 'auto', IDE_ORDER)
+
+      const [command] = mocks.spawn.mock.calls[0]
+      expect(command).toBe('C:\\code.cmd -r -g C:\\app\\%%TEMP%%\\App.tsx:1:1')
+    })
+
+    it('reports spawn failures without throwing', () => {
+      mocks.resolveOwningEditor.mockReturnValue('C:\\code.cmd')
+      mocks.spawn.mockReturnValue({
+        on: vi.fn((event: string, handler: (error: Error) => void) => {
+          if (event === 'error') handler(new Error('boom'))
+        }),
+        unref: vi.fn(),
+      })
+      const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+      openInEditor({ file: 'C:\\app\\src\\App.tsx', line: '1', col: '1' }, 'auto', IDE_ORDER)
+
+      expect(stderr).toHaveBeenCalledWith(expect.stringContaining('boom'))
+      stderr.mockRestore()
+    })
   })
 })
