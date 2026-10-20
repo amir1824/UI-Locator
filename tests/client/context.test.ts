@@ -321,3 +321,32 @@ describe('copyContextForAI', () => {
     await expect(copyContextForAI(button)).rejects.toThrow('Clipboard API unavailable')
   })
 })
+
+describe('getElementContext user-typed values', () => {
+  it('omits the value of text-like inputs (user data must not reach the prompt)', () => {
+    const input = document.createElement('input')
+    input.type = 'email'
+    input.setAttribute('name', 'email')
+    input.setAttribute('value', 'jane@example.com')
+    input.setAttribute('data-source', '/proj/src/Form.tsx:1:1')
+    document.body.appendChild(input)
+
+    const context = getElementContext(input)
+
+    expect(context?.element.attributes).toEqual({ type: 'email', name: 'email' })
+    input.remove()
+  })
+
+  it('keeps the markup-authored value of submit buttons', () => {
+    const input = document.createElement('input')
+    input.type = 'submit'
+    input.setAttribute('value', 'Save')
+    input.setAttribute('data-source', '/proj/src/Form.tsx:1:1')
+    document.body.appendChild(input)
+
+    const context = getElementContext(input)
+
+    expect(context?.element.attributes).toEqual({ type: 'submit', value: 'Save' })
+    input.remove()
+  })
+})

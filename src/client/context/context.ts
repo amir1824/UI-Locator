@@ -98,14 +98,13 @@ export function getElementContext(
   options: GetContextOptions = {},
 ): LocatorContext | null {
   const attribute = options.attribute ?? SOURCE_ATTR
-  const detail = options.detail ?? 'compact'
   const sourceElement = resolveSourceElement(element, attribute)
   if (!sourceElement) return null
 
   const raw = sourceElement.getAttribute(attribute)
   if (!raw) return null
 
-  return buildContext(sourceElement, raw, { ...options, detail })
+  return buildContext(sourceElement, raw, options)
 }
 
 /** Compact by default; append Path/Text/Styles/Box when expanded fields exist. */

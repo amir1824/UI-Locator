@@ -34,8 +34,12 @@ export const LAYOUT = {
     zIndex: '99999',
     pointerEvents: 'none',
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
-    maxWidth: '420px',
-    whiteSpace: 'pre',
+    boxSizing: 'border-box',
+    maxWidth: 'min(420px, calc(100vw - 16px))',
+    // pre-wrap keeps the source line on its own row but wraps the hint line;
+    // `pre` let it run past maxWidth. `anywhere` breaks long unspaced file paths.
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
     lineHeight: '1.5',
   },
   highlight: {

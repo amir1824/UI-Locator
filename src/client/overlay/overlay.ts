@@ -1,12 +1,12 @@
 import type { LocatorTheme } from '../../shared/index.js'
 import { LAYOUT, UI_IDS } from './styles.js'
+import { placeTooltip } from './tooltip-position.js'
 import { buildTooltipText } from './tooltip-text.js'
 
 const BADGE_LABEL_IDLE = 'Locator'
 const BADGE_LABEL_PICKING = 'Picking — Esc'
 
 const HIGHLIGHT_PADDING = 2
-const TOOLTIP_CURSOR_OFFSET = 16
 const FLASH_DURATION_MS = 1500
 const FLASH_HORIZONTAL_OFFSET = 80
 const FLASH_BOTTOM_OFFSET = 80
@@ -17,9 +17,10 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
   let previousCursor: string | null = null
 
   const removeHighlight = () => root.getElementById(UI_IDS.highlight)?.remove()
+  const removeTooltipNode = () => root.getElementById(UI_IDS.tooltip)?.remove()
 
   const removeTooltip = () => {
-    root.getElementById(UI_IDS.tooltip)?.remove()
+    removeTooltipNode()
     removeHighlight()
   }
 
@@ -40,20 +41,34 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
     root.appendChild(highlight)
   }
 
-  const showTooltip = (text: string, el: Element | null, x: number, y: number) => {
-    removeTooltip()
+  const showTooltip = (text: string, x: number, y: number): HTMLDivElement => {
+    removeTooltipNode()
     const tooltip = document.createElement('div')
     tooltip.id = UI_IDS.tooltip
     tooltip.textContent = text
     Object.assign(tooltip.style, LAYOUT.tooltip, {
-      top: `${y + TOOLTIP_CURSOR_OFFSET}px`,
-      left: `${x + TOOLTIP_CURSOR_OFFSET}px`,
+      top: '0px',
+      left: '0px',
       background: theme.tooltipBackground,
       color: theme.tooltipText,
       border: `1px solid ${theme.tooltipBorder}`,
     })
     root.appendChild(tooltip)
-    if (el) showHighlight(el)
+    positionTooltip(tooltip, { x, y })
+    return tooltip
+  }
+
+  // Measured after mount: the size depends on the wrapped text. clientWidth/Height
+  // exclude the page scrollbar, so the tooltip never tucks under it.
+  const positionTooltip = (tooltip: HTMLElement, cursor: { x: number; y: number }) => {
+    const { width, height } = tooltip.getBoundingClientRect()
+    const viewport = {
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+    }
+    const { left, top } = placeTooltip(cursor, { width, height }, viewport)
+    tooltip.style.left = `${left}px`
+    tooltip.style.top = `${top}px`
   }
 
   const showSourceTooltip = (
@@ -62,15 +77,18 @@ export function createLocatorOverlayUi(root: ShadowRoot, theme: LocatorTheme) {
     x: number,
     y: number,
   ) => {
-    showTooltip(buildTooltipText(source), el, x, y)
+    showTooltip(buildTooltipText(source), x, y)
+    showHighlight(el)
   }
 
+  // The flash replaces only the tooltip text and keeps the element highlight. Its
+  // timeout removes the flash node itself, never a hover tooltip that replaced it.
   const flashMessage = (text: string) => {
     if (flashTimeout) clearTimeout(flashTimeout)
     const x = window.innerWidth / 2 - FLASH_HORIZONTAL_OFFSET
     const y = window.innerHeight - FLASH_BOTTOM_OFFSET
-    showTooltip(text, null, x, y)
-    flashTimeout = setTimeout(removeTooltip, FLASH_DURATION_MS)
+    const flash = showTooltip(text, x, y)
+    flashTimeout = setTimeout(() => flash.remove(), FLASH_DURATION_MS)
   }
 
   const applyBadgeColors = (active: boolean) => {

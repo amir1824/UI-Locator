@@ -188,9 +188,9 @@ const ctx = getElementContext(el, {
 
 ## IDE Setup
 
-On **macOS**, Cursor / VS Code open via `cursor://file/…` / `vscode://file/…` (Launch Services → existing window, no second Dock icon). WebStorm and non-macOS platforms spawn the editor CLI with `-r -g` (or WebStorm `--line` / `--column`).
+On **macOS**, Cursor / VS Code open via `cursor://file/…` / `vscode://file/…` (Launch Services → existing window, no second Dock icon). Every other editor is spawned through its CLI with the goto-position flags from [`launch-editor`'s argument map](https://github.com/vitejs/launch-editor) (`-r -g` for the VS Code family, `--line` / `--column` for JetBrains IDEs, `file:line:col` for Sublime / Zed / Atom). An editor it does not know gets the file only.
 
-Editor discovery still uses [`launch-editor`'s guess helper](https://github.com/vitejs/launch-editor) as a last resort.
+Editor discovery still uses [`launch-editor`'s guess helper](https://github.com/vitejs/launch-editor) as a last resort. The open endpoint answers `500` when no editor can be resolved or the CLI fails to start, and the overlay shows **Open failed**.
 
 ### Auto detection (default)
 
@@ -237,6 +237,7 @@ LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/co
 ## Limitations
 
 - Dev only — no production impact
+- Files can be opened from the project root and any directory in Vite's `server.fs.allow` (monorepo siblings included); anything else is refused with `403`
 - JSX/TSX only for `data-source` injection
 - Expanded CSS path stops at mount ids `root` / `app` (common React mounts); other app shells keep walking to `body`
 - Expanded context does not include screenshots or React Fiber props
@@ -246,6 +247,20 @@ LAUNCH_EDITOR=/Applications/Visual Studio Code.app/Contents/Resources/app/bin/co
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, scripts, PR workflow, and how to add a new IDE.
 
 ## Changelog
+
+### 1.6.0
+
+- Fix: client script 404 when Vite `base` is not `/`
+- Fix: absolute source paths under `/src` (container `WORKDIR /src`) were rewritten to `<root>/src/src/…`
+- Fix: non-VS Code editors (Sublime, Zed, JetBrains, …) received VS Code's `-r -g` flags; arguments now come from `launch-editor`
+- Fix: `vite-plugin-source-locator/client` can be imported under SSR
+- Fix: files in Vite's `server.fs.allow` directories (monorepo siblings) can be opened
+- Fix: the open endpoint reports `500` when the editor fails to launch instead of `ok`
+- Fix: highlight follows the page on scroll/resize and survives the copy flash
+- Fix: Windows paths show only the file name in the tooltip
+- Fix: tooltip text no longer spills past the tooltip box, and the tooltip flips or pins to stay inside the viewport (phones, right and bottom edges)
+- Privacy: `value` of text-like inputs is no longer copied into the AI prompt
+- Vite 7 added to the peer range
 
 ### 1.5.0
 

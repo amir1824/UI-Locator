@@ -13,7 +13,10 @@ const PROMPT_ATTRS = new Set([
   'aria-label',
 ])
 
-const SENSITIVE_INPUT_TYPES = new Set(['password', 'hidden'])
+// Only these input types carry a markup-authored value. Everything else
+// (text, email, password, hidden, ...) holds user-typed or secret data that
+// must not land in a prompt copied to the clipboard.
+const STATIC_VALUE_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'checkbox', 'radio'])
 
 const STYLE_KEYS = [
   'color',
@@ -34,7 +37,7 @@ function shouldOmitValue(element: HTMLElement): boolean {
   if (element.tagName !== 'INPUT') return false
   const typeAttr = element.getAttribute('type')
   const type = (typeAttr ?? (element as HTMLInputElement).type).toLowerCase()
-  return SENSITIVE_INPUT_TYPES.has(type)
+  return !STATIC_VALUE_INPUT_TYPES.has(type)
 }
 
 export function readPromptAttributes(

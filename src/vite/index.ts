@@ -1,16 +1,10 @@
-import { existsSync } from 'node:fs'
+import { posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Plugin } from 'vite'
+import type { HtmlTagDescriptor, Plugin } from 'vite'
 import { IDE_ORDER, OPEN_ENDPOINT, SOURCE_ATTR } from '../shared/index.js'
 import type { LocatorIde, LocatorThemeInput } from '../shared/index.js'
 import { babelPluginAddSourceAttr } from './babel-plugin.js'
-import { openInEditor } from './editors.js'
-import {
-  isAllowedRequest,
-  isInsideRoot,
-  readQuery,
-  resolveFilePath,
-} from './open-endpoint.js'
+import { createOpenHandler } from './open-handler.js'
 
 export type SourceLocatorOptions = {
   enabled?: boolean
@@ -20,9 +14,17 @@ export type SourceLocatorOptions = {
   theme?: LocatorThemeInput
 }
 
+type ClientInjection = {
+  endpoint: string
+  attribute: string
+  theme?: LocatorThemeInput
+  root?: string
+}
+
 const VIRTUAL_CLIENT_ID = 'virtual:source-locator-client'
 const RESOLVED_VIRTUAL_CLIENT_ID = '\0virtual:source-locator-client'
 const CLIENT_ENTRY = fileURLToPath(new URL('../client/index.js', import.meta.url))
+const DEFAULT_BASE = '/'
 
 type ReactBabelConfig = { plugins: unknown[] }
 
@@ -36,18 +38,37 @@ function resolveOptions(options: SourceLocatorOptions = {}) {
   }
 }
 
+function hasBabelPlugin(plugins: unknown[]): boolean {
+  return plugins.some((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin) === babelPluginAddSourceAttr)
+}
+
+function configScriptTag(clientConfig: ClientInjection): HtmlTagDescriptor {
+  const json = JSON.stringify(clientConfig).replace(/</g, '\\u003c')
+  return {
+    tag: 'script',
+    children: `window.__SOURCE_LOCATOR_CONFIG__=${json}`,
+    injectTo: 'head',
+  }
+}
+
+// Vite's base middleware 404s any resource that does not start with `base`, so the
+// client script URL must carry it (Vite joins base onto its own `@vite/client` too).
+function clientScriptTag(base: string): HtmlTagDescriptor {
+  return {
+    tag: 'script',
+    attrs: { type: 'module', src: posix.join(base, `@id/${VIRTUAL_CLIENT_ID}`) },
+    injectTo: 'body',
+  }
+}
+
 function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
   const config = resolveOptions(options)
-  const clientConfig: {
-    endpoint: string
-    attribute: string
-    theme?: LocatorThemeInput
-    root?: string
-  } = {
+  const clientConfig: ClientInjection = {
     endpoint: config.endpoint,
     attribute: config.attribute,
     theme: config.theme,
   }
+  let base = DEFAULT_BASE
 
   return {
     name: 'source-locator',
@@ -55,20 +76,14 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
     configResolved(resolved) {
       clientConfig.root = resolved.root
+      base = resolved.base
     },
 
     api: {
       reactBabel(babelConfig: ReactBabelConfig) {
         if (!config.enabled) return
-        const hasPlugin = babelConfig.plugins.some((p) => {
-          if (Array.isArray(p)) {
-            return p[0] === babelPluginAddSourceAttr
-          }
-          return p === babelPluginAddSourceAttr
-        })
-        if (!hasPlugin) {
-          babelConfig.plugins.push([babelPluginAddSourceAttr, { attribute: config.attribute }])
-        }
+        if (hasBabelPlugin(babelConfig.plugins)) return
+        babelConfig.plugins.push([babelPluginAddSourceAttr, { attribute: config.attribute }])
       },
     },
 
@@ -84,70 +99,23 @@ function sourceLocator(options: SourceLocatorOptions = {}): Plugin {
 
     configureServer(server) {
       if (!config.enabled) return
-      server.middlewares.use(config.endpoint, (req, res) => {
-        if (!isAllowedRequest(req)) {
-          res.writeHead(403)
-          res.end('forbidden')
-          return
-        }
-
-        let file: string | null
-        let line: string
-        let col: string
-        let ide: string
-        try {
-          ;({ file, line, col, ide } = readQuery(req.url ?? '', config.ides[0] ?? 'auto'))
-        } catch {
-          res.writeHead(400)
-          res.end('invalid request')
-          return
-        }
-
-        if (!file) {
-          res.writeHead(400)
-          res.end('missing file')
-          return
-        }
-
-        try {
-          const resolvedFile = resolveFilePath(file, server.config.root)
-          if (!isInsideRoot(resolvedFile, server.config.root)) {
-            res.writeHead(403)
-            res.end('outside project')
-            return
-          }
-          if (!existsSync(resolvedFile)) {
-            res.writeHead(404)
-            res.end('file not found')
-            return
-          }
-          openInEditor({ file: resolvedFile, line, col }, ide, config.ides)
-          res.writeHead(200, { 'Content-Type': 'text/plain' })
-          res.end('ok')
-        } catch {
-          res.writeHead(500)
-          res.end('failed to open editor')
-        }
+      // Files are opened from the same directories Vite is allowed to serve, so
+      // monorepo sources outside `root` (workspace siblings) work too.
+      const handler = createOpenHandler({
+        root: server.config.root,
+        allowedRoots: [server.config.root, ...server.config.server.fs.allow],
+        ides: config.ides,
+      })
+      // An unexpected throw goes to Vite's error middleware instead of becoming an
+      // unhandled rejection that would crash the dev server.
+      server.middlewares.use(config.endpoint, (req, res, next) => {
+        handler(req, res).catch(next)
       })
     },
 
     transformIndexHtml() {
       if (!config.enabled) return
-      return {
-        html: '',
-        tags: [
-          {
-            tag: 'script',
-            children: `window.__SOURCE_LOCATOR_CONFIG__=${JSON.stringify(clientConfig).replace(/</g, '\\u003c')}`,
-            injectTo: 'head',
-          },
-          {
-            tag: 'script',
-            attrs: { type: 'module', src: `/@id/${VIRTUAL_CLIENT_ID}` },
-            injectTo: 'body',
-          },
-        ],
-      }
+      return [configScriptTag(clientConfig), clientScriptTag(base)]
     },
   }
 }

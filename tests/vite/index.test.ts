@@ -132,7 +132,7 @@ describe('sourceLocator vite plugin', () => {
     await server.close()
   })
 
-  it('returns 403 for files outside project root', async () => {
+  it('does not open or reveal existing files outside the allowed roots', async () => {
     mkdirSync(join(root, 'src'), { recursive: true })
     const filePath = join(root, 'src', 'App.tsx')
     writeFileSync(filePath, '<div />')
@@ -152,8 +152,8 @@ describe('sourceLocator vite plugin', () => {
       `http://localhost:${port}/__open-in-editor?file=${encodeURIComponent(outsidePath)}&line=1&col=1`,
     )
 
-    expect(response.status).toBe(403)
-    expect(await response.text()).toBe('outside project')
+    expect(response.status).toBe(404)
+    expect(await response.text()).toBe('file not found')
     expect(openInEditor).not.toHaveBeenCalled()
 
     await server.close()
@@ -355,6 +355,69 @@ describe('sourceLocator vite plugin', () => {
     },
   )
 
+  it('prefixes the client script with a non-root base', async () => {
+    const server = await createServer({
+      root,
+      base: '/app/',
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+
+    const html = await server.transformIndexHtml('/index.html', '<html><body></body></html>')
+
+    expect(html).toContain('src="/app/@id/virtual:source-locator-client"')
+    expect(html).toContain('window.__SOURCE_LOCATOR_CONFIG__=')
+
+    await server.close()
+  })
+
+  it('opens files from directories in server.fs.allow (monorepo siblings)', async () => {
+    const shared = mkdtempSync(join(tmpdir(), 'source-locator-shared-'))
+    const filePath = join(shared, 'Button.tsx')
+    writeFileSync(filePath, '<div />')
+
+    const server = await createServer({
+      root,
+      server: { fs: { allow: [root, shared] } },
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=${encodeURIComponent(filePath)}&line=1&col=1`,
+    )
+
+    expect(response.status).toBe(200)
+    expect(openInEditor).toHaveBeenCalledWith({ file: filePath, line: '1', col: '1' }, 'auto', IDE_ORDER)
+
+    await server.close()
+  })
+
+  it('returns 500 when the editor fails to launch', async () => {
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'App.tsx'), '<div />')
+    vi.mocked(openInEditor).mockRejectedValueOnce(new Error('ENOENT'))
+
+    const server = await createServer({
+      root,
+      plugins: [sourceLocator()],
+      logLevel: 'silent',
+    })
+    await server.listen()
+
+    const port = server.config.server.port
+    const response = await fetch(
+      `http://localhost:${port}/__open-in-editor?file=/src/App.tsx&line=1&col=1`,
+    )
+
+    expect(response.status).toBe(500)
+    expect(await response.text()).toBe('failed to open editor')
+
+    await server.close()
+  })
+
   it('defaults to vscode when ides is vscode only', async () => {
     mkdirSync(join(root, 'src'), { recursive: true })
     const filePath = join(root, 'src', 'App.tsx')
@@ -384,35 +447,32 @@ describe('sourceLocator vite plugin', () => {
 })
 
 describe('sourceLocator.babel', () => {
-  const originalNodeEnv = process.env.NODE_ENV
-
   afterEach(() => {
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV
-    else process.env.NODE_ENV = originalNodeEnv
+    vi.unstubAllEnvs()
   })
 
   it('registers the babel plugin in development', () => {
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     expect(sourceLocator.babel().babel.plugins).toHaveLength(1)
   })
 
   it('registers no babel plugin in production (would leak absolute source paths)', () => {
-    process.env.NODE_ENV = 'production'
+    vi.stubEnv('NODE_ENV', 'production')
     expect(sourceLocator.babel().babel.plugins).toHaveLength(0)
   })
 
   it('registers no babel plugin when NODE_ENV is unset', () => {
-    delete process.env.NODE_ENV
+    vi.stubEnv('NODE_ENV', undefined)
     expect(sourceLocator.babel().babel.plugins).toHaveLength(0)
   })
 
   it('registers no babel plugin for staging (fail-closed allowlist)', () => {
-    process.env.NODE_ENV = 'staging'
+    vi.stubEnv('NODE_ENV', 'staging')
     expect(sourceLocator.babel().babel.plugins).toHaveLength(0)
   })
 
   it('registers no babel plugin when enabled is explicitly false', () => {
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     expect(sourceLocator.babel({ enabled: false }).babel.plugins).toHaveLength(0)
   })
 })

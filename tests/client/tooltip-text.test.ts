@@ -32,6 +32,12 @@ describe('buildTooltipText', () => {
     expect(text).not.toContain('App.tsx:1')
   })
 
+  it('shows only the file name for Windows paths', () => {
+    const text = buildTooltipText('C:\\proj\\src\\App.tsx:10:1', 'Windows NT 10.0')
+    expect(text).toContain('App.tsx:10')
+    expect(text).not.toContain('C:')
+  })
+
   it('shows message when source is missing', () => {
     expect(buildTooltipText(undefined)).toBe('No source for this element')
   })
