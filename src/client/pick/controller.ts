@@ -61,6 +61,8 @@ export function startPickController(
 
   function setPickMode(active: boolean) {
     document.removeEventListener('mousemove', hover.onMouseMove)
+    window.removeEventListener('scroll', hover.refresh, true)
+    window.removeEventListener('resize', hover.refresh)
     if (!active) {
       hover.cancel()
       pickMode = false
@@ -68,6 +70,8 @@ export function startPickController(
       return
     }
     document.addEventListener('mousemove', hover.onMouseMove)
+    window.addEventListener('scroll', hover.refresh, true)
+    window.addEventListener('resize', hover.refresh)
     pickMode = true
     ui.setPickActive(true)
   }

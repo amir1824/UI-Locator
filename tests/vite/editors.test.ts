@@ -75,16 +75,58 @@ describe('openInEditor', () => {
     )
   })
 
-  it('warns and skips spawn when no editor is resolved', () => {
+  it('warns and rejects without spawning when no editor is resolved', async () => {
     const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     mocks.resolveOwningEditor.mockReturnValue(null)
     mocks.resolveAutoEditor.mockReturnValue(null)
 
-    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+    await expect(
+      openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER),
+    ).rejects.toThrow('no editor resolved')
 
     expect(mocks.spawn).not.toHaveBeenCalled()
     expect(write).toHaveBeenCalledWith(expect.stringContaining('no editor resolved'))
     write.mockRestore()
+  })
+
+  it('resolves once the OS reports the editor process spawned', async () => {
+    mocks.resolveOwningEditor.mockReturnValue(CURSOR_CLI)
+    mocks.spawn.mockReturnValue({
+      on: vi.fn((event: string, handler: () => void) => {
+        if (event === 'spawn') handler()
+      }),
+      unref: vi.fn(),
+    })
+
+    await expect(
+      openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER),
+    ).resolves.toBeUndefined()
+  })
+
+  it('passes file:line:col without VS Code flags to Sublime and Zed', () => {
+    mocks.resolveOwningEditor.mockReturnValue('/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl')
+    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+    expect(mocks.spawn.mock.calls[0][1]).toEqual(['/app/src/App.tsx:10:5'])
+
+    mocks.resolveOwningEditor.mockReturnValue('zed')
+    openInEditor({ file: '/app/src/App.tsx', line: '10', col: '5' }, 'auto', IDE_ORDER)
+    expect(mocks.spawn.mock.calls[1][1]).toEqual(['/app/src/App.tsx:10:5'])
+  })
+
+  it('uses JetBrains line/column flags for auto-detected IDEA', () => {
+    mocks.resolveOwningEditor.mockReturnValue('/Applications/IntelliJ IDEA.app/Contents/MacOS/idea')
+
+    openInEditor({ file: '/app/src/App.tsx', line: '7', col: '3' }, 'auto', IDE_ORDER)
+
+    expect(mocks.spawn.mock.calls[0][1]).toEqual(['--line', '7', '--column', '3', '/app/src/App.tsx'])
+  })
+
+  it('drops the position for editors with no known goto flags', () => {
+    mocks.resolveOwningEditor.mockReturnValue('some-editor')
+
+    openInEditor({ file: '/app/src/App.tsx', line: '7', col: '3' }, 'auto', IDE_ORDER)
+
+    expect(mocks.spawn.mock.calls[0][1]).toEqual(['/app/src/App.tsx'])
   })
 
   it('spawns cursor with reuse and goto flags', () => {
@@ -218,7 +260,7 @@ describe('openInEditor', () => {
       expect(command).toBe('C:\\code.cmd -r -g C:\\app\\%%TEMP%%\\App.tsx:1:1')
     })
 
-    it('reports spawn failures without throwing', () => {
+    it('warns and rejects when the spawn fails', async () => {
       mocks.resolveOwningEditor.mockReturnValue('C:\\code.cmd')
       mocks.spawn.mockReturnValue({
         on: vi.fn((event: string, handler: (error: Error) => void) => {
@@ -228,7 +270,9 @@ describe('openInEditor', () => {
       })
       const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
-      openInEditor({ file: 'C:\\app\\src\\App.tsx', line: '1', col: '1' }, 'auto', IDE_ORDER)
+      await expect(
+        openInEditor({ file: 'C:\\app\\src\\App.tsx', line: '1', col: '1' }, 'auto', IDE_ORDER),
+      ).rejects.toThrow('boom')
 
       expect(stderr).toHaveBeenCalledWith(expect.stringContaining('boom'))
       stderr.mockRestore()

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
-import type { SpawnOptions } from 'node:child_process'
-import { basename } from 'node:path'
+import type { ChildProcess, SpawnOptions } from 'node:child_process'
+import { win32 } from 'node:path'
+import getArgumentsForPosition from 'launch-editor/get-args.js'
 import { resolveIde } from '../shared/index.js'
 import type { LocatorIde, SourceLocation } from '../shared/index.js'
 import {
@@ -17,16 +18,19 @@ const MAC_URL_SCHEMES: Record<string, string> = {
 
 const POISON_ENV_KEYS = ['ELECTRON_RUN_AS_NODE', 'NODE_OPTIONS'] as const
 
-function commandNameFromCli(cliPath: string): string {
-  return basename(cliPath).replace(/\.(exe|cmd|bat)$/i, '').toLowerCase()
+// win32.basename splits on both `/` and `\`, so a Windows CLI path resolves to its
+// command name on every host (launch-editor's own basename is host-separator only).
+function commandBasename(cliPath: string): string {
+  return win32.basename(cliPath)
 }
 
+function commandNameFromCli(cliPath: string): string {
+  return commandBasename(cliPath).replace(/\.(exe|cmd|bat)$/i, '').toLowerCase()
+}
+
+/** launch-editor already knows each editor's goto-position flags; reuse its map. */
 function buildEditorArgs(cliPath: string, location: SourceLocation): string[] {
-  const commandName = commandNameFromCli(cliPath)
-  if (commandName === 'webstorm' || commandName === 'webstorm64') {
-    return ['--line', location.line, '--column', location.col, location.file]
-  }
-  return ['-r', '-g', `${location.file}:${location.line}:${location.col}`]
+  return getArgumentsForPosition(commandBasename(cliPath), location.file, location.line, location.col)
 }
 
 /** vscode:// / cursor:// open the running app via Launch Services — no second Dock icon. */
@@ -63,57 +67,62 @@ function doubleQuoteIfNeeded(value: string): string {
   return value
 }
 
-function runWindowsShell(command: string, args: string[], env?: NodeJS.ProcessEnv): void {
+function spawnWindowsShell(command: string, args: string[], env?: NodeJS.ProcessEnv): ChildProcess {
   const launchCommand = [command, ...args.map(escapeCmdArgs)].map(doubleQuoteIfNeeded).join(' ')
   // spawn + shell avoids exec's 1MB stdout/stderr buffer if the editor logs verbosely.
-  spawn(launchCommand, [], {
+  return spawn(launchCommand, [], {
     shell: true,
     stdio: 'ignore',
     windowsHide: true,
     ...(env ? { env } : {}),
-  }).on('error', (error) => {
-    warn(`failed to open editor: ${error.message}`)
   })
 }
 
-function runSpawn(command: string, args: string[], options: SpawnOptions): void {
-  if (process.platform === 'win32') {
-    runWindowsShell(command, args, options.env)
-    return
-  }
-  spawn(command, args, options).on('error', (error) => {
-    warn(`failed to open editor: ${error.message}`)
+function spawnForPlatform(command: string, args: string[], options: SpawnOptions): ChildProcess {
+  if (process.platform === 'win32') return spawnWindowsShell(command, args, options.env)
+  return spawn(command, args, options)
+}
+
+// Resolve once the OS has actually started the process, so the HTTP endpoint can
+// report a missing CLI (ENOENT) instead of answering `ok` before spawn fails.
+function awaitSpawn(child: ChildProcess): Promise<void> {
+  return new Promise((resolve, reject) => {
+    child.on('spawn', () => resolve())
+    child.on('error', (error) => {
+      warn(`failed to open editor: ${error.message}`)
+      reject(error)
+    })
   })
 }
 
-function spawnEditor(cliPath: string, location: SourceLocation): void {
+function spawnEditor(cliPath: string, location: SourceLocation): Promise<void> {
   const url = macEditorUrl(cliPath, location)
   if (url) {
     // `open <url>` talks to the already-running IDE. Spawning MacOS/Cursor or
     // bin/cursor briefly starts a second process (Dock duplicate) before handoff.
-    runSpawn('open', [url], { stdio: 'ignore' })
-    return
+    return awaitSpawn(spawnForPlatform('open', [url], { stdio: 'ignore' }))
   }
-  runSpawn(cliPath, buildEditorArgs(cliPath, location), {
-    stdio: 'ignore',
-    env: editorEnv(),
-  })
+  return awaitSpawn(
+    spawnForPlatform(cliPath, buildEditorArgs(cliPath, location), {
+      stdio: 'ignore',
+      env: editorEnv(),
+    }),
+  )
 }
 
 export function openInEditor(
   location: SourceLocation,
   ideParam: string,
   allowed: LocatorIde[],
-): void {
+): Promise<void> {
   const ide = resolveIde(ideParam, allowed)
-  if (ide === 'auto') {
-    const resolved = resolveOwningEditor() ?? resolveAutoEditor()
-    if (!resolved) {
-      warn('no editor resolved (set LAUNCH_EDITOR or install a GUI IDE CLI)')
-      return
-    }
-    spawnEditor(resolved, location)
-    return
+  if (ide !== 'auto') return spawnEditor(resolveCliPath(toLaunchEditorName(ide)), location)
+
+  const resolved = resolveOwningEditor() ?? resolveAutoEditor()
+  if (!resolved) {
+    const message = 'no editor resolved (set LAUNCH_EDITOR or install a GUI IDE CLI)'
+    warn(message)
+    return Promise.reject(new Error(message))
   }
-  spawnEditor(resolveCliPath(toLaunchEditorName(ide)), location)
+  return spawnEditor(resolved, location)
 }

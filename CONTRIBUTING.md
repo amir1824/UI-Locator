@@ -19,6 +19,7 @@ Requires Node.js 18+.
 | `npm run build` | Compile `src/` → `dist/` |
 | `npm test` | Run Vitest once |
 | `npm run test:watch` | Vitest watch mode |
+| `npm run test:e2e` | Build, then run the Playwright suite against the playground (Chromium; a fake editor records what would open) |
 | `npm run lint` | ESLint |
 | `npm run playground` | Build plugin + open the React demo (`http://localhost:5177`) |
 | `npm run clean` | Remove `dist/` |
@@ -57,7 +58,7 @@ Keep tests next to the area they cover (`tests/client/…`, `tests/vite/…`, `t
 4. Run `npm run lint && npm run build && npm test`
 5. Open a PR with a short “why” and how you verified it
 
-For UI / pick-mode changes, also run `npm run playground` and click through:
+For UI / pick-mode changes, also run `npm run test:e2e`, then `npm run playground` and click through:
 
 - badge → hover → click opens the right file
 - dialog open + pick does **not** dismiss the dialog

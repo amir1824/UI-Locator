@@ -78,22 +78,20 @@ function readUnixProcess(pid: number): { ppid: number; comm: string } | null {
   }
 }
 
+function findEditorInAncestry(pid: number, seen: Set<number>): string | null {
+  if (pid <= 0 || seen.has(pid) || seen.size >= MAX_PARENT_WALK) return null
+  seen.add(pid)
+  const info = readUnixProcess(pid)
+  if (!info) return null
+  const launchName = matchIdeLaunchName(info.comm)
+  if (launchName) return resolveCliPath(launchName)
+  return findEditorInAncestry(info.ppid, seen)
+}
+
 function walkParentsForEditor(): string | null {
   // ponytail: Windows parent walk is brittle; fall back to machine-wide guess instead.
   if (process.platform === 'win32') return null
-
-  let pid = process.pid
-  const seen = new Set<number>()
-  for (let i = 0; i < MAX_PARENT_WALK; i++) {
-    if (pid <= 0 || seen.has(pid)) break
-    seen.add(pid)
-    const info = readUnixProcess(pid)
-    if (!info) break
-    const launchName = matchIdeLaunchName(info.comm)
-    if (launchName) return resolveCliPath(launchName)
-    pid = info.ppid
-  }
-  return null
+  return findEditorInAncestry(process.pid, new Set())
 }
 
 // The dev server's parent process never changes during its lifetime, but each call

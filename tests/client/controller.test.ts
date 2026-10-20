@@ -122,6 +122,54 @@ describe('startPickController', () => {
     target.remove()
   })
 
+  it('re-hit-tests the last hover point on scroll so the tooltip follows the page', async () => {
+    const first = document.createElement('button')
+    first.setAttribute('data-source', '/src/First.tsx:1:1')
+    const second = document.createElement('button')
+    second.setAttribute('data-source', '/src/Second.tsx:1:1')
+    document.body.append(first, second)
+    Object.defineProperty(document, 'elementFromPoint', {
+      value: vi.fn().mockReturnValue(second),
+      configurable: true,
+    })
+
+    const { root } = mountController()
+    root.getElementById(UI_IDS.badge)!.dispatchEvent(composedClick())
+
+    first.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 4, clientY: 4 }))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    expect(root.getElementById(UI_IDS.tooltip)?.textContent).toContain('First.tsx')
+
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+    expect(document.elementFromPoint).toHaveBeenCalledWith(4, 4)
+    expect(root.getElementById(UI_IDS.tooltip)?.textContent).toContain('Second.tsx')
+  })
+
+  it('keeps the element highlight while the copy flash is shown', async () => {
+    const { root } = mountController()
+
+    const button = document.createElement('button')
+    button.setAttribute('data-source', '/app/src/Button.tsx:1:1')
+    document.body.appendChild(button)
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    })
+
+    root.getElementById(UI_IDS.badge)!.dispatchEvent(composedClick())
+    button.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 1, clientY: 1 }))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    expect(root.getElementById(UI_IDS.highlight)).not.toBeNull()
+
+    button.dispatchEvent(composedClick({ shiftKey: true }))
+
+    await vi.waitFor(() => {
+      expect(root.getElementById(UI_IDS.tooltip)?.textContent).toBe('Copied for AI')
+    })
+    expect(root.getElementById(UI_IDS.highlight)).not.toBeNull()
+  })
+
   it('does not close capture-phase dialogs when clicking the badge', () => {
     const dismiss = vi.fn()
     document.addEventListener('pointerdown', dismiss, true)

@@ -107,49 +107,46 @@ describe('matchIdeLaunchName', () => {
 })
 
 describe('resolveOwningEditor', () => {
-  const originalLaunchEditor = process.env.LAUNCH_EDITOR
-  const originalCursorAgent = process.env.CURSOR_AGENT
-
   beforeEach(() => {
     mocks.existsSync.mockReset()
-    delete process.env.LAUNCH_EDITOR
-    delete process.env.CURSOR_AGENT
-    delete process.env.CURSOR_EXTENSION_HOST_ROLE
-    delete process.env.VSCODE_PID
-    delete process.env.VSCODE_NLS_CONFIG
-    delete process.env.VSCODE_IPC_HOOK
+    vi.stubEnv('LAUNCH_EDITOR', undefined)
+    vi.stubEnv('CURSOR_AGENT', undefined)
+    vi.stubEnv('CURSOR_EXTENSION_HOST_ROLE', undefined)
+    vi.stubEnv('VSCODE_PID', undefined)
+    vi.stubEnv('VSCODE_NLS_CONFIG', undefined)
+    vi.stubEnv('VSCODE_IPC_HOOK', undefined)
   })
 
   afterEach(() => {
-    if (originalLaunchEditor === undefined) delete process.env.LAUNCH_EDITOR
-    else process.env.LAUNCH_EDITOR = originalLaunchEditor
-    if (originalCursorAgent === undefined) delete process.env.CURSOR_AGENT
-    else process.env.CURSOR_AGENT = originalCursorAgent
+    vi.unstubAllEnvs()
   })
 
   it('uses LAUNCH_EDITOR when set', () => {
-    process.env.LAUNCH_EDITOR = CURSOR_CLI
+    vi.stubEnv('LAUNCH_EDITOR', CURSOR_CLI)
     mocks.existsSync.mockReturnValue(true)
 
     expect(resolveOwningEditor()).toBe(CURSOR_CLI)
   })
 
   it('detects Cursor from CURSOR_AGENT env when ps is unavailable', () => {
-    process.env.CURSOR_AGENT = '1'
+    vi.stubEnv('CURSOR_AGENT', '1')
     mocks.existsSync.mockImplementation((path: string) => path === CURSOR_CLI)
 
     expect(resolveOwningEditor()).toBe(CURSOR_CLI)
   })
 
   it('does not treat VSCODE_PID alone as VS Code', () => {
-    process.env.VSCODE_PID = '12345'
+    vi.stubEnv('VSCODE_PID', '12345')
     expect(resolveEditorFromEnv()).toBeNull()
   })
 
   it('detects VS Code from NLS path hint', () => {
-    process.env.VSCODE_NLS_CONFIG = JSON.stringify({
-      defaultMessagesFile: '/Applications/Visual Studio Code.app/nls.messages.json',
-    })
+    vi.stubEnv(
+      'VSCODE_NLS_CONFIG',
+      JSON.stringify({
+        defaultMessagesFile: '/Applications/Visual Studio Code.app/nls.messages.json',
+      }),
+    )
     mocks.existsSync.mockImplementation((path: string) => path === VSCODE_CLI)
 
     expect(resolveEditorFromEnv()).toBe(VSCODE_CLI)

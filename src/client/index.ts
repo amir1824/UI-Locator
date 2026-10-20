@@ -65,5 +65,7 @@ export function initSourceLocator(config: ClientConfig): PickController | undefi
   return api
 }
 
-const injected = window.__SOURCE_LOCATOR_CONFIG__
+// This entry is also imported directly (`/client`) by apps that only want the
+// context helpers, including under SSR where `window` does not exist.
+const injected = typeof window === 'undefined' ? undefined : window.__SOURCE_LOCATOR_CONFIG__
 if (injected) initSourceLocator(injected)
